@@ -4,14 +4,14 @@
 * http://www.jcgt.org/published/0009/03/02/
  */
 
- #include "./common.glsl"
+ #include "./Common.glsl"
  #iChannel0 "self"
 
 bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
 {
     bool hit = false;
     rec.t = tmax;
-   
+   /**/
     if(hit_triangle(createTriangle(vec3(-10.0, -0.01, 10.0), vec3(10.0, -0.01, 10.0), vec3(-10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
     {
         hit = true;
@@ -23,7 +23,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         hit = true;
         rec.material = createDiffuseMaterial(vec3(0.2));
     }
-
+/**/
     if(hit_sphere(
         createSphere(vec3(-4.0, 1.0, 0.0), 1.0),
         r,
@@ -68,7 +68,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         hit = true;
         rec.material = createDialectricMaterial(vec3(1.0), 1.5);
     }
-   
+    /**/
     int numxy = 5;
     
     for(int x = -numxy; x < numxy; ++x)
@@ -160,53 +160,78 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
             }
         }
     }
+    /**/
     return hit;
 }
 
 vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
 {
-    vec3 diffCol, specCol;
     vec3 colorOut = vec3(0.0, 0.0, 0.0);
-    float shininess;
-    HitRecord dummy;
+    HitRecord lightRecord;
 
    //INSERT YOUR CODE HERE
+    vec3 emissionPoint = rec.pos + rec.normal * displacementBias;
+    vec3 lightDirection = pl.pos - rec.pos;
+    float tMax = length(lightDirection);
+    lightDirection = normalize(lightDirection);
+    // Light is bellow the surface
+    float lightIntensity = dot(lightDirection, rec.normal);
+    if(lightIntensity <= 0.f)
+        return vec3(0.);
+
+    Ray lightRay = createRay(emissionPoint,lightDirection);
+    if(hit_world(lightRay, 0.001, tMax, lightRecord))
+        return vec3(0.f);
     
-	return colorOut; 
+    // Diffuse
+    vec3 diffuseColor = pl.color * rec.material.percentDiffuse * lightIntensity * rec.material.diffuseColor;
+    // Specular
+    float ksSpecular = pow(lightIntensity, rec.material.shininess);
+    vec3 specularColor = pl.color * rec.material.percentSpecular * ksSpecular * rec.material.specularColor;
+
+    
+	return diffuseColor + specularColor; 
 }
 
 #define MAX_BOUNCES 10
 
-vec3 rayColor(Ray r)
+vec3 rayColor(Ray ray)
 {
+    viewDirection = ray.direction;
+    currRefractIndex = 1.f;
     HitRecord rec;
     vec3 col = vec3(0.0);
     vec3 throughput = vec3(1.0f, 1.0f, 1.0f);
     for(int i = 0; i < MAX_BOUNCES; ++i)
     {
-        if(hit_world(r, 0.001, 10000.0, rec))
+        if(hit_world(ray, 0.001, 10000.0, rec))
         {
             //calculate direct lighting with 3 white point lights:
             {
-                //createPointLight(vec3(-10.0, 15.0, 0.0), vec3(1.0, 1.0, 1.0))
-                //createPointLight(vec3(8.0, 15.0, 3.0), vec3(1.0, 1.0, 1.0))
-                //createPointLight(vec3(1.0, 15.0, -9.0), vec3(1.0, 1.0, 1.0))
+                pointLight pl0 = createPointLight(vec3(-10.0, 15.0, 0.0), vec3(1.0, 1.0, 1.0));
+                pointLight pl1 = createPointLight(vec3(8.0, 15.0, 3.0), vec3(1.0, 1.0, 1.0));
+                pointLight pl2 = createPointLight(vec3(1.0, 15.0, -9.0), vec3(1.0, 1.0, 1.0));
 
-                //for instance: col += directlighting(createPointLight(vec3(-10.0, 15.0, 0.0), vec3(1.0, 1.0, 1.0)), r, rec) * throughput;
+                col += directlighting(pl0, ray, rec) * throughput;
+                col += directlighting(pl1, ray, rec) * throughput;
+                col += directlighting(pl2, ray, rec) * throughput;
+               
             }
            
             //calculate secondary ray and update throughput
             Ray scatterRay;
             vec3 atten;
-            if(scatter(r, rec, atten, scatterRay))
+            if(scatter(ray, rec, atten, scatterRay))
             {   
-                //  insert your code here    
+                //  insert your code here  
+                throughput *= atten;
+                ray = scatterRay;
             }
         
         }
         else  //background
         {
-            float t = 0.8 * (r.direction.y + 1.0);
+            float t = 0.8 * (ray.direction.y + 1.0);
             col += throughput * mix(vec3(1.0), vec3(0.5, 0.7, 1.0), t);
             break;
         }
