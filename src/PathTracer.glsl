@@ -166,10 +166,8 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
 
 vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
 {
-    vec3 colorOut = vec3(0.0, 0.0, 0.0);
-    HitRecord lightRecord;
+    vec3 colorOut = vec3(0.0);
 
-   //INSERT YOUR CODE HERE
     vec3 emissionPoint = rec.pos + rec.normal * displacementBias;
     vec3 lightDirection = pl.pos - rec.pos;
     float tMax = length(lightDirection);
@@ -179,6 +177,7 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
     if(lightIntensity <= 0.f)
         return vec3(0.);
 
+    HitRecord lightRecord;
     Ray lightRay = createRay(emissionPoint,lightDirection);
     if(hit_world(lightRay, 0.001, tMax, lightRecord))
         return vec3(0.f);
@@ -186,9 +185,10 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
     // Diffuse
     vec3 diffuseColor = pl.color * rec.material.percentDiffuse * lightIntensity * rec.material.diffuseColor;
     // Specular
-    float ksSpecular = pow(lightIntensity, rec.material.shininess);
-    vec3 specularColor = pl.color * rec.material.percentSpecular * ksSpecular * rec.material.specularColor;
-
+    vec3 halfwayVector = normalize(-viewDirection + lightDirection);
+    float specAngle = max(dot(halfwayVector, rec.normal), 0.f);
+    float ksSpecular = pow(specAngle, rec.material.shininess) * rec.material.percentSpecular;
+    vec3 specularColor = pl.color *  ksSpecular * rec.material.specularColor;
     
 	return diffuseColor + specularColor; 
 }
@@ -197,13 +197,14 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
 
 vec3 rayColor(Ray ray)
 {
-    viewDirection = ray.direction;
+    
     currRefractIndex = 1.f;
     HitRecord rec;
     vec3 col = vec3(0.0);
     vec3 throughput = vec3(1.0f, 1.0f, 1.0f);
     for(int i = 0; i < MAX_BOUNCES; ++i)
     {
+        viewDirection = ray.direction;
         if(hit_world(ray, 0.001, 10000.0, rec))
         {
             //calculate direct lighting with 3 white point lights:
