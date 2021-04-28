@@ -206,7 +206,7 @@ vec3 rayColor(Ray r)
         }
         else  //background
         {
-            float t = 0.8 * (r.d.y + 1.0);
+            float t = 0.8 * (r.direction.y + 1.0);
             col += throughput * mix(vec3(1.0), vec3(0.5, 0.7, 1.0), t);
             break;
         }

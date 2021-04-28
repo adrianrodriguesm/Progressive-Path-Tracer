@@ -6,18 +6,19 @@
 const float pi = 3.14159265358979;
 const float epsilon = 0.001;
 
-struct Ray {
-    vec3 o;     // origin
-    vec3 d;     // direction - always set with normalized vector
-    float t;    // time, for motion blur
+struct Ray
+{
+    vec3 origin;     // origin
+    vec3 direction;     // direction - always set with normalized vector
+    float time;    // time, for motion blur
 };
 
 Ray createRay(vec3 o, vec3 d, float t)
 {
     Ray r;
-    r.o = o;
-    r.d = d;
-    r.t = t;
+    r.origin = o;
+    r.direction = d;
+    r.time = t;
     return r;
 }
 
@@ -28,7 +29,7 @@ Ray createRay(vec3 o, vec3 d)
 
 vec3 pointOnRay(Ray r, float t)
 {
-    return r.o + r.d * t;
+    return r.origin + r.direction * t;
 }
 
 float gSeed = 0.0;
@@ -194,15 +195,10 @@ struct HitRecord
     Material material;
 };
 
-
+// Calculate Reflection power (Shlicks Approximation)
 float schlick(float cosine, float refIdx)
 {
-    //INSERT YOUR CODE HERE
-    float otherRefractIndex = material->GetRefrIndex();
-    // Calculate Reflection power (Shlicks Approximation)
-    float R0 = powf(((refractionIndex - otherRefractIndex) / (refractionIndex + otherRefractIndex)), 2.0f);
-    float R = R0 + (1 - R0) * (powf(1 - cosf(incidentAngle), 5));
-    return 0;
+    return refIdx + (1.0f - refIdx) * pow(max(1.0f - cosine, 0.0), 5.0f);
 }
 
 bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
@@ -210,7 +206,7 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
     if(rec.material.type == MT_DIFFUSE)
     {
         //INSERT CODE HERE,
-        atten = rec.material.albedo * max(dot(rScattered.d, rec.normal), 0.0) / pi;
+        atten = rec.material.albedo * max(dot(rScattered.direction, rec.normal), 0.0) / pi;
         return true;
     }
     if(rec.material.type == MT_METAL)
@@ -226,17 +222,19 @@ bool scatter(Ray rIn, HitRecord rec, out vec3 atten, out Ray rScattered)
         float niOverNt;
         float cosine;
 
-        if(dot(rIn.d, rec.normal) > 0.0) //hit inside
+        // Hit inside
+        if(dot(rIn.direction, rec.normal) > 0.0) 
         {
             outwardNormal = -rec.normal;
             niOverNt = rec.material.refIdx;
-            cosine = rec.material.refIdx * dot(rIn.d, rec.normal); 
+            cosine = rec.material.refIdx * dot(rIn.direction, rec.normal); 
         }
-        else  //hit from outside
+        // Hit from outside
+        else 
         {
             outwardNormal = rec.normal;
             niOverNt = 1.0 / rec.material.refIdx;
-            cosine = -dot(rIn.d, rec.normal); 
+            cosine = -dot(rIn.direction, rec.normal); 
         }
 
         //Use probabilistic math to decide if scatter a reflected ray or a refracted ray
@@ -283,20 +281,33 @@ Triangle createTriangle(vec3 v0, vec3 v1, vec3 v2)
     return t;
 }
 
-bool hit_triangle(Triangle t, Ray r, float tmin, float tmax, out HitRecord rec)
+bool hit_triangle(Triangle triangle, Ray ray, float tmin, float tmax, out HitRecord rec)
 {
-    //INSERT YOUR CODE HERE
+    vec3 edge1 = triangle.b - triangle.a;
+    vec3 edge2 = triangle.c - triangle.a;
+    vec3 normal = cross(edge1, edge2);
+    // If the determinant is zero this means that 
+    // the ray is paralle to triangle plane and if
+    // it is bellow zero that means is behind
+    float det = -dot(ray.direction, normal);
+	float invDet = 1.f / det; // We divide to avoid used floating point division
+	vec3 AO = ray.origin - triangle.a;
+    // Using the scalar triple product and the Cramer's rule
+    // to calculate the bary-centric coords
+    vec3 DAO = cross(AO, ray.direction);
+    float u = dot(edge2, DAO) * invDet;
+    float v = -dot(edge1, DAO) * invDet;
+    float t = dot(AO, normal) * invDet;
     //calculate a valid t and normal
-    if(t < tmax && t > tmin)
+    if(det >= 1e-6 && t >= 0.0 && u >= 0.0 && v >= 0.0 && (u + v) <= 1.0f)
     {
         rec.t = t;
         rec.normal = normal;
-        rec.pos = pointOnRay(r, rec.t);
+        rec.pos = pointOnRay(ray, rec.t);
         return true;
     }
     return false;
 }
-
 
 struct Sphere
 {
@@ -333,30 +344,58 @@ MovingSphere createMovingSphere(vec3 center0, vec3 center1, float radius, float 
 
 vec3 center(MovingSphere mvsphere, float time)
 {
-    return moving_center;
+    return vec3(0.f);
+    //return moving_center;
 }
-
 
 /*
  * The function naming convention changes with these functions to show that they implement a sort of interface for
  * the book's notion of "hittable". E.g. hit_<type>.
  */
 
-bool hit_sphere(Sphere s, Ray r, float tmin, float tmax, out HitRecord rec)
+bool hit_sphere(Sphere sphere, Ray ray, float tmin, float tmax, out HitRecord rec)
 {
-    //INSERT YOUR CODE HERE
-    //calculate a valid t and normal
-	
-    if(t < tmax && t > tmin) {
+    // Calculate a valid t and normal
+	// Center and origin inversed and signs of b inversed for sphere optimization
+    vec3 temp = sphere.center - ray.origin;
+
+    float b = dot(temp, ray.direction);
+    float c = dot(temp, temp) - sphere.radius * sphere.radius;
+    // If origin outside and pointing away from sphere
+    if (c > 0.f && b <= 0.f)
+        return false;
+
+    float a = 1.f;    // length of ray.Direction should be 1 
+    float disc = b * b - a * c;
+
+    if (disc <= 0.0)
+        return false;
+
+    float e = sqrt(disc);
+    float denom = a;
+    float t = (b - e) / denom; // root 1
+
+    if (t > epsilon)
+    {
         rec.t = t;
-        rec.pos = pointOnRay(r, rec.t);
-        rec.normal = normal
+        rec.pos = pointOnRay(ray, rec.t);
+        rec.normal = normalize(rec.pos - sphere.center);
         return true;
     }
-    else return false;
+
+    t = (b + e) / denom; //root 2
+
+    if (t > epsilon)
+    {
+        rec.t = t;
+        rec.pos = pointOnRay(ray, rec.t);
+        rec.normal =  normalize(rec.pos - sphere.center);
+        return true;
+    }
+    return  false;
 }
 
-bool hit_movingSphere(MovingSphere s, Ray r, float tmin, float tmax, out HitRecord rec)
+bool hit_movingSphere(MovingSphere sphere, Ray ray, float tmin, float tmax, out HitRecord rec)
 {
     float B, C, delta;
     bool outside;
@@ -369,8 +408,8 @@ bool hit_movingSphere(MovingSphere s, Ray r, float tmin, float tmax, out HitReco
 	
     if(t < tmax && t > tmin) {
         rec.t = t;
-        rec.pos = pointOnRay(r, rec.t);
-        rec.normal = normal;
+        rec.pos = pointOnRay(ray, rec.t);
+        rec.normal = normalize(rec.pos - sphere.center0);
         return true;
     }
     else return false;
