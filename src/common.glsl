@@ -262,6 +262,7 @@ float fresnelReflectAmount(float n1, float n2, vec3 normal, vec3 incident, float
 
 bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
 {
+    rec.normal = normalize(rec.normal);
     if(rec.material.type == MT_DIFFUSE)
     {
         vec3 rayOrigin = rec.pos + rec.normal * displacementBias;
