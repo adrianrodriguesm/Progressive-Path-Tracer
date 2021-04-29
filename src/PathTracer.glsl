@@ -86,6 +86,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                 if(chooseMaterial < 0.3)
                 {
                     vec3 center1 = center + vec3(0.0, hash1(gSeed) * 0.5, 0.0);
+                    /** /
                     // diffuse
                     if(hit_movingSphere(
                         createMovingSphere(center, center1, 0.2, 0.0, 1.0),
@@ -97,6 +98,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                         hit = true;
                         rec.material = createDiffuseMaterial(hash3(seed) * hash3(seed));
                     }
+                    /**/
                 }
                 else if(chooseMaterial < 0.5)
                 {
@@ -227,8 +229,19 @@ vec3 rayColor(Ray ray)
                 //  insert your code here  
                 throughput *= atten;
                 ray = scatterRay;
-            }
-        
+
+                // Russian Roulette
+                // As the throughput gets smaller, the ray is more likely to get terminated early.
+                // Survivors have their value boosted to make up for fewer samples being in the average.
+                {
+                    float p = max(throughput.r, max(throughput.g, throughput.b));
+                    if (hash1(gSeed) > p)
+                        break;
+                
+                    // Add the energy we 'lose' by randomly terminating paths
+                    throughput *= 1.0f / p;
+                }
+            }        
         }
         else  //background
         {

@@ -228,18 +228,18 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
 {
     if(rec.material.type == MT_DIFFUSE)
     {
-        vec3 rayOrigin = rec.pos - rec.normal * displacementBias;
-        vec3 rayDirection = normalize(reflect(rayIn.direction, rec.normal));
+        vec3 rayOrigin = rec.pos + rec.normal * displacementBias;
+        vec3 s = rayOrigin + rec.normal + normalize(randomInUnitSphere(gSeed));
+        vec3 rayDirection = normalize(s - rayOrigin);
         rScattered = createRay(rayOrigin, rayDirection);
         atten = rec.material.albedo * max(dot(rScattered.direction, rec.normal), 0.0) / pi;
         return true;
     }
     if(rec.material.type == MT_METAL)
     {
-        vec3 rayOrigin = rec.pos - rec.normal * displacementBias;
+        vec3 rayOrigin = rec.pos + rec.normal * displacementBias;
         vec3 rayDirection = normalize(reflect(rayIn.direction, rec.normal));
         rayDirection = normalize(rayDirection + randomInUnitSphere(gSeed) * rec.material.roughness);
-        //INSERT CODE HERE, consider fuzzy reflections
         rScattered = createRay(rayOrigin, rayDirection);
         atten = rec.material.albedo;
         return true;
@@ -272,10 +272,10 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
         if( hash1(gSeed) < reflectProb)  //Reflection
         {
 
-            vec3 rayOrigin = rec.pos - outwardNormal * displacementBias;
+            vec3 rayOrigin = rec.pos + outwardNormal * displacementBias;
             vec3 rayDirection = normalize(reflect(rayIn.direction, outwardNormal));
             rScattered = createRay(rayOrigin, rayDirection);
-            //atten *= vec3(reflectProb); // not necessary since we are only scattering reflectProb rays and not all reflected rays 
+            atten *= vec3(reflectProb); // not necessary since we are only scattering reflectProb rays and not all reflected rays 
         }
         else
         {
@@ -284,7 +284,7 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
             vec3 rayDirection = refract(inverViewDir, outwardNormal, niOverNt);
             rScattered = createRay(rayOrigin, rayDirection);
             
-            //atten *= vec3(1.0 - reflectProb);// not necessary since we are only scattering 1-reflectProb rays and not all refracted rays
+            atten *= vec3(1.0 - reflectProb);// not necessary since we are only scattering 1-reflectProb rays and not all refracted rays
         }
 
         return true;
