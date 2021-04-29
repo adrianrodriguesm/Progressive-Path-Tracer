@@ -157,56 +157,69 @@ Ray getRay(Camera cam, vec2 pixelSample)  //rnd pixel_sample viewport coordinate
 struct Material
 {
     int type;
-    vec3 albedo;
-    vec3 diffuseColor;
-    vec3 specularColor;
-    float percentSpecular;
-    float percentDiffuse;
+    vec3 albedo;                // the color used for diffuse lighting
     float shininess;
-    float roughness; // controls roughness for metals
-    float refIdx;    // index of refraction for dialectric
+    float specularChance;       // percentage chance of doing a specular reflection
+    float specularRoughness;    // how rough the specular reflections are
+    vec3  specularColor;        // the color tint of specular reflections
+    float refractionIndex;      // index of refraction. used by fresnel and refraction.
+    float refractionChance;     // percent chance of doing a refractive transmission
+    float refractionRoughness;  // how rough the refractive transmissions are
+    vec3  refractionColor;      // absorption for beer's law 
 };
 
 Material createDiffuseMaterial(vec3 albedo)
 {
-    Material m;
-    m.type = MT_DIFFUSE;
-    m.albedo = albedo;
-    m.shininess = 10.f;
-    m.percentDiffuse = 1.f;
-    m.percentSpecular = 0.f;
-    m.diffuseColor = albedo;
-    m.specularColor = vec3(0.f);
-    return m;
+    Material material;
+    material.type = MT_DIFFUSE;
+    material.albedo = albedo;
+    material.shininess = 10.f;        
+    material.specularChance = 0.f;
+    material.specularRoughness = 0.0f;
+    material.specularColor = vec3(.1f); // Grey 
+    material.refractionIndex = 0.f;
+    material.refractionChance = 0.0f;
+    return material;
 }
-
-Material createMetalMaterial(vec3 albedo, float roughness)
+Material createZeroedMaterial()
 {
-    Material m;
-    m.type = MT_METAL;
-    m.albedo = albedo;
-    m.roughness = roughness;
-    m.diffuseColor = vec3(0.f);
-    m.specularColor = albedo;
-    m.shininess = 220.f;
-    m.percentDiffuse = 0.f;
-    m.percentSpecular = 1.f;
-    return m;
+    Material ret;
+    ret.albedo = vec3(0.0f, 0.0f, 0.0f);
+    ret.specularChance = 0.0f;
+    ret.specularRoughness = 0.0f;
+    ret.shininess = 10.f;
+    ret.specularColor = vec3(0.0f, 0.0f, 0.0f);
+    ret.refractionIndex = 1.0f;
+    ret.refractionChance = 0.0f;
+    ret.refractionRoughness = 0.0f;
+    return ret;
+}
+Material createMetalMaterial(vec3 specular, float roughness)
+{
+    Material material;
+    material.type = MT_METAL;
+    material.albedo = vec3(0);
+    material.shininess = 220.f;      
+    material.specularChance = 1.f;
+    material.specularRoughness = roughness;
+    material.specularColor = specular;
+    material.refractionIndex = 0.f;
+    material.refractionChance = 0.0f;
+    return material;
 }
 
 Material createDialectricMaterial(vec3 albedo, float refIdx)
 {
-    Material m;
-    m.type = MT_DIALECTRIC;
-    m.albedo = albedo;
-    m.refIdx = refIdx;
-    // Glass
-    m.diffuseColor = vec3(0.f);
-    m.specularColor = vec3(1.f);
-    m.shininess = 20.f;
-    m.percentDiffuse = 0.f;
-    m.percentSpecular = .7f;
-    return m;
+    Material material;
+    material.type = MT_DIALECTRIC;
+    material.albedo = albedo;
+    material.shininess = 550.f;          
+    material.specularChance = 0.02f;
+    material.specularRoughness = 0.f;
+    material.specularColor = vec3(1.0f) * 0.8f; // Grey 
+    material.refractionIndex = refIdx;
+    material.refractionChance = 1.0f;
+    return material;
 }
 
 struct HitRecord
@@ -214,6 +227,7 @@ struct HitRecord
     vec3 pos;
     vec3 normal;
     float t;            // ray parameter
+    bool hitFromInside;
     Material material;
 };
 
@@ -224,14 +238,36 @@ float schlick(float cosine, float refractionIndex, float otherRefIndex)
     return R0 + (1.0f - R0) * pow(max(1.0f - cosine, 0.0), 5.0f);
 }
 
+float fresnelReflectAmount(float n1, float n2, vec3 normal, vec3 incident, float f0, float f90)
+{
+        // Schlick aproximation
+        float r0 = (n1-n2) / (n1+n2);
+        r0 *= r0;
+        float cosX = -dot(normal, incident);
+        if (n1 > n2)
+        {
+            float n = n1/n2;
+            float sinT2 = n*n*(1.0-cosX*cosX);
+            // Total internal reflection
+            if (sinT2 > 1.0)
+                return f90;
+            cosX = sqrt(1.0-sinT2);
+        }
+        float x = 1.0-cosX;
+        float ret = r0+(1.0-r0)*x*x*x*x*x;
+
+        // adjust reflect multiplier for object reflectivity
+        return mix(f0, f90, ret);
+}
+
 bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
 {
     if(rec.material.type == MT_DIFFUSE)
     {
         vec3 rayOrigin = rec.pos + rec.normal * displacementBias;
-        vec3 s = rayOrigin + rec.normal + normalize(randomInUnitSphere(gSeed));
+        vec3 s = rayOrigin + rec.normal + randomInUnitSphere(gSeed);
         vec3 rayDirection = normalize(s - rayOrigin);
-        rScattered = createRay(rayOrigin, rayDirection);
+        rScattered = createRay(rec.pos, rayDirection);
         atten = rec.material.albedo * max(dot(rScattered.direction, rec.normal), 0.0) / pi;
         return true;
     }
@@ -239,9 +275,9 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
     {
         vec3 rayOrigin = rec.pos + rec.normal * displacementBias;
         vec3 rayDirection = normalize(reflect(rayIn.direction, rec.normal));
-        rayDirection = normalize(rayDirection + randomInUnitSphere(gSeed) * rec.material.roughness);
+        rayDirection = normalize(rayDirection + randomInUnitSphere(gSeed) * rec.material.specularRoughness);
         rScattered = createRay(rayOrigin, rayDirection);
-        atten = rec.material.albedo;
+        atten = rec.material.specularColor;
         return true;
     }
     if(rec.material.type == MT_DIALECTRIC)
@@ -250,24 +286,24 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
         vec3 outwardNormal;
         float niOverNt;
         float cosine;
-
+/**/
         // Hit inside
         if(dot(rayIn.direction, rec.normal) > 0.0) 
         {
             outwardNormal = -rec.normal;
-            niOverNt = rec.material.refIdx;
-            cosine = rec.material.refIdx * dot(rayIn.direction, rec.normal); 
+            niOverNt = rec.material.refractionIndex;
+            cosine = rec.material.refractionIndex * dot(rayIn.direction, rec.normal); 
         }
         // Hit from outside
         else 
         {
             outwardNormal = rec.normal;
-            niOverNt = 1.0 / rec.material.refIdx;
+            niOverNt = 1.0 / rec.material.refractionIndex;
             cosine = -dot(rayIn.direction, rec.normal);
         }
 
         //Use probabilistic math to decide if scatter a reflected ray or a refracted ray
-
+/**/
         float reflectProb = schlick(cosine, niOverNt, currRefractIndex);
         if( hash1(gSeed) < reflectProb)  //Reflection
         {
@@ -336,6 +372,7 @@ bool hit_triangle(Triangle triangle, Ray ray, float tmin, float tmax, out HitRec
     if(det >= 1e-6 && t >= 0.0 && t < tmax && t > tmin && u >= 0.0 && v >= 0.0 && (u + v) <= 1.0f)
     {
         rec.t = t;
+        rec.hitFromInside = false;
         rec.normal = normal;
         rec.pos = pointOnRay(ray, rec.t);
         return true;
@@ -407,23 +444,24 @@ bool hit_sphere(Sphere sphere, Ray ray, float tmin, float tmax, out HitRecord re
         return false;
 
     float e = sqrt(disc);
-    float denom = a;
-    float t = (b - e) / denom; // root 1
+    float t = (b - e); // root 1
 
     if (t > epsilon && t < tmax && t > tmin)
     {
         rec.t = t;
         rec.pos = pointOnRay(ray, rec.t);
+        rec.hitFromInside = (dot((rec.pos - sphere.center), ray.direction)) > 0.f;
         rec.normal = normalize(rec.pos - sphere.center);
         return true;
     }
-
-    t = (b + e) / denom; //root 2
+    
+    t = (b + e); //root 2
 
     if (t > epsilon && t < tmax && t > tmin)
     {
         rec.t = t;
         rec.pos = pointOnRay(ray, rec.t);
+        rec.hitFromInside = (dot((rec.pos - sphere.center), ray.direction)) > 0.f;
         rec.normal =  normalize(rec.pos - sphere.center);
         return true;
     }
