@@ -170,7 +170,6 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
 
 vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
 {
-    /**/
     vec3 normal = normalize(rec.normal);
     vec3 emissionPoint = rec.pos + rec.normal * displacementBias;
     vec3 lightDirection = pl.pos - rec.pos;
@@ -196,50 +195,6 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
     vec3 specularColor = pl.color *  ksSpecular * rec.material.specularColor;
     
 	return diffuseColor + specularColor;
-    /** /
-    vec3 diffCol, specCol;
-    vec3 colorOut = vec3(0.0, 0.0, 0.0);
-    float shininess;
-    HitRecord dummy;
-
-    float diffuse, specular;
-
-   //INSERT YOUR CODE HERE
-    vec3 L = (pl.pos - rec.pos);
-    if(dot(L, rec.normal) > 0.0){
-        Ray feeler = createRay(rec.pos + epsilon * rec.normal, L);
-        float len = length(pl.pos - rec.pos);
-
-        if(hit_world(feeler, 0.0, len, dummy)) // If true, then we're in shadow. Return color as 0
-        { 
-            return colorOut;
-        }
-
-        if(rec.material.type == MT_DIFFUSE)
-        {
-            specCol = vec3(0.1);
-            diffCol = rec.material.albedo;
-            shininess = 10.0;
-        }else if(rec.material.type == MT_METAL){
-            specCol = rec.material.albedo;
-            diffCol = vec3(0.0);
-            shininess = 190.0;
-        }else{ // Dialletric Materials
-            specCol = vec3(0.004);
-            diffCol = vec3(0.0);
-            shininess = 500.0;
-        }
-
-        L = normalize(L);
-        vec3 H = normalize((L - r.direction));
-
-        diffCol = (pl.color * diffCol) * max(dot(rec.normal, L), 0.0); 
-        specCol = (pl.color * specCol) * pow(max(dot(H, rec.normal), 0.0), shininess); 
-
-        colorOut = diffCol + specCol;  
-    }
-    /**/
-     
 }
 
 #define MAX_BOUNCES 10
