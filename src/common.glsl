@@ -157,12 +157,11 @@ struct Material
     int type;
     vec3 albedo;                // the color used for diffuse lighting
     float shininess;
-    float specularChance;       // percentage chance of doing a specular reflection
-    float diffuseChance;       // percentage chance of doing a specular reflection
+    float specularPercent;      // percentage chance of doing a specular reflection
+    float diffusePercent;       // percentage chance of doing a specular reflection
     float specularRoughness;    // how rough the specular reflections are
     vec3  specularColor;        // the color tint of specular reflections
     float refractionIndex;      // index of refraction. used by fresnel and refraction.
-    float refractionChance;     // percent chance of doing a refractive transmission
     float refractionRoughness;  // how rough the refractive transmissions are
     vec3  refractionColor;      // absorption for beer's law 
 };
@@ -173,25 +172,23 @@ Material createDiffuseMaterial(vec3 albedo)
     material.type = MT_DIFFUSE;
     material.albedo = albedo;
     material.shininess = 10.f;
-    material.diffuseChance = 1.f;
-    material.specularChance = 0.f;
+    material.diffusePercent = 1.f;
+    material.specularPercent = 0.f;
     material.specularRoughness = 0.0f;
     material.specularColor = vec3(.1f); // Grey 
     material.refractionIndex = 0.f;
-    material.refractionChance = 0.0f;
     return material;
 }
 Material createZeroedMaterial()
 {
     Material ret;
     ret.albedo = vec3(0.0f, 0.0f, 0.0f);
-    ret.specularChance = 0.0f;
+    ret.specularPercent = 0.0f;
     ret.specularRoughness = 0.0f;
     ret.shininess = 10.f;
-    ret.diffuseChance = 0.f;
+    ret.diffusePercent = 0.f;
     ret.specularColor = vec3(0.0f, 0.0f, 0.0f);
     ret.refractionIndex = 1.0f;
-    ret.refractionChance = 0.0f;
     ret.refractionRoughness = 0.0f;
     return ret;
 }
@@ -201,12 +198,11 @@ Material createMetalMaterial(vec3 specular, float roughness)
     material.type = MT_METAL;
     material.albedo = vec3(0);
     material.shininess = 220.f;
-    material.diffuseChance = 0.f;     
-    material.specularChance = 1.f;
+    material.diffusePercent = 0.f;     
+    material.specularPercent = 1.f;
     material.specularRoughness = roughness;
     material.specularColor = specular;
     material.refractionIndex = 0.f;
-    material.refractionChance = 0.0f;
     return material;
 }
 
@@ -216,12 +212,11 @@ Material createDialectricMaterial(vec3 albedo, float refIdx)
     material.type = MT_DIALECTRIC;
     material.albedo = albedo;
     material.shininess = 20.f;
-    material.diffuseChance = 0.f;       
-    material.specularChance = .7f;
+    material.diffusePercent = 0.f;       
+    material.specularPercent = .7f;
     material.specularRoughness = 0.f;
     material.specularColor = albedo; 
     material.refractionIndex = refIdx;
-    material.refractionChance = 1.0f;
     return material;
 }
 
@@ -242,49 +237,19 @@ float schlick(float cosine, float refractionIndex, float otherRefIndex)
     return R0 + (1.0f - R0) * pow(max(1.0f - cosine, 0.0), 5.0f);
 }
 /**/
-float schlick(float cosOi, float ior_1, float ior_2)
-{
-    //INSERT YOUR CODE HERE
-    float r0 = pow(((ior_1 - ior_2) / (ior_1 + ior_2)), 2.0);
-	float Kr = r0 + (1.0 - r0) * pow(1.0 - cosOi, 5.0);
-    return Kr;
-}
-
-float fresnelReflectAmount(float n1, float n2, vec3 normal, float incident)
+float fresnelReflectAmount(float n1, float n2, float incident)
 {
         // Schlick aproximation
         float r0 = (n1-n2) / (n1+n2);
         r0 *= r0;
-        float x = 1.0 - incident;
+        float x = 1.0 - cos(incident);
         return r0 + (1.0-r0) *x*x*x*x*x;
-}
-
-float FresnelReflectAmount(float n1, float n2, vec3 normal, vec3 incident, float f0, float f90)
-{
-        // Schlick aproximation
-        float r0 = (n1-n2) / (n1+n2);
-        r0 *= r0;
-        float cosX = -dot(normal, incident);
-        if (n1 > n2)
-        {
-            float n = n1/n2;
-            float sinT2 = n*n*(1.0-cosX*cosX);
-            // Total internal reflection
-            if (sinT2 > 1.0)
-                return f90;
-            cosX = sqrt(1.0-sinT2);
-        }
-        float x = 1.0-cosX;
-        float ret = r0+(1.0-r0)*x*x*x*x*x;
-
-        // adjust reflect multiplier for object reflectivity
-        return mix(f0, f90, ret);
 }
 
 bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
 {
     vec3 normal = rec.hitFromInside ? normalize(rec.normal * -1.f) : normalize(rec.normal);
-    vec3 rayDir = normalize(rayIn.direction);
+    vec3 rayDir = rayIn.direction;
     vec3 inveRayDir = normalize(rayIn.direction * -1.f);
     if(rec.material.type == MT_DIFFUSE)
     {
@@ -306,10 +271,6 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
     }
     if(rec.material.type == MT_DIALECTRIC)
     {
-        /** /
-
-        /**/
-        
         float incidentAngle = acos(dot(normal, inveRayDir));
         float sinIncidentAngle = sin(incidentAngle);
         if(sinIncidentAngle <= 0.f)
@@ -317,26 +278,20 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
             
             return false;
         }
-        float cosine = 0.f;
-        if(rec.hitFromInside)
-            cosine = rec.material.refractionIndex * dot(rayIn.direction, rec.normal);
-        else
-            cosine = - dot(rayIn.direction, rec.normal);
         // take fresnel into account for specularChance and adjust other chances.
         // specular takes priority.
         atten = rec.material.albedo;
         float specularChance = fresnelReflectAmount(
                 rec.hitFromInside ? rec.material.refractionIndex : 1.0f,
                 !rec.hitFromInside ? rec.material.refractionIndex : 1.0f,
-                normal, cosine);
+                 incidentAngle);
         // calculate whether we are going to do a diffuse, specular, or refractive ray
         float rayProbability = 1.0f;
         if (hash1(gSeed) < specularChance)
         {
             rayProbability = specularChance;
-
             rScattered.origin =  rec.pos + normal * displacementBias;
-            vec3 specularRayDir = reflect(rayIn.direction, normal);         
+            vec3 specularRayDir = reflect(rayDir, normal);         
             rScattered.direction = normalize(specularRayDir + randomInUnitSphere(gSeed) * rec.material.specularRoughness);
         }
         else
@@ -346,7 +301,7 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
             rScattered.direction = refract(inveRayDir, normal, rec.hitFromInside ? rec.material.refractionIndex : 1.0f / rec.material.refractionIndex);
             
         }
-        atten *= rayProbability;
+        atten /= rayProbability;
         return true;
         /**/
 

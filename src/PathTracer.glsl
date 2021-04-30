@@ -57,9 +57,9 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         hit = true;
         rec.material = createDialectricMaterial(vec3(1.0), 1.5);
     }
-/** /
+/**/
     if(hit_sphere(
-        createSphere(vec3(0.0, 1.0, 0.0), -0.95),
+        createSphere(vec3(0.0, 1.0, 0.0), -0.55),
         r,
         tmin,
         rec.t,
@@ -187,11 +187,11 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
         return vec3(0.f);
     
     // Diffuse
-    vec3 diffuseColor = (pl.color *  rec.material.diffuseChance * rec.material.albedo) * lightIntensity;
+    vec3 diffuseColor = (pl.color *  rec.material.diffusePercent * rec.material.albedo) * lightIntensity;
     // Specular
     vec3 halfwayVector = normalize(-viewDirection + lightDirection);
     float specAngle = max(dot(halfwayVector, normal), 0.f);
-    float ksSpecular = pow(specAngle, rec.material.shininess) * rec.material.specularChance;
+    float ksSpecular = pow(specAngle, rec.material.shininess) * rec.material.specularPercent;
     vec3 specularColor = pl.color *  ksSpecular * rec.material.specularColor;
 	return diffuseColor + specularColor;
 }
