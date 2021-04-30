@@ -23,7 +23,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         hit = true;
         rec.material = createDiffuseMaterial(vec3(0.2));
     }
-/**/
+
     if(hit_sphere(
         createSphere(vec3(-4.0, 1.0, 0.0), 1.0),
         r,
@@ -44,9 +44,9 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         rec))
     {
         hit = true;
-        rec.material = createMetalMaterial(vec3(0.7, 0.6, 0.5), 0.0);
+        rec.material = createMetalMaterial(vec3(0.7, 0.6, 0.5), 0.f);
     }
-    /** /
+/**/
     if(hit_sphere(
         createSphere(vec3(0.0, 1.0, 0.0), 1.0),
         r,
@@ -57,7 +57,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         hit = true;
         rec.material = createDialectricMaterial(vec3(1.0), 1.5);
     }
-
+/** /
     if(hit_sphere(
         createSphere(vec3(0.0, 1.0, 0.0), -0.95),
         r,
@@ -68,7 +68,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         hit = true;
         rec.material = createDialectricMaterial(vec3(1.0), 1.5);
     }
-    /**/
+/**/
     int numxy = 5;
     
     for(int x = -numxy; x < numxy; ++x)
@@ -146,7 +146,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                 }
                 else
                 {
-                    /** /
+                    /**/
                     // glass (dialectric)
                     if(hit_sphere(
                         createSphere(center, 0.2),
@@ -171,13 +171,14 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
 vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
 {
     vec3 normal = normalize(rec.normal);
-    vec3 emissionPoint = rec.pos + rec.normal * displacementBias;
+    vec3 viewDirection = normalize(r.direction);
+    vec3 emissionPoint = rec.pos + normal * displacementBias;
     vec3 lightDirection = pl.pos - rec.pos;
     float tMax = length(lightDirection);
     lightDirection = normalize(lightDirection);
     // Light is bellow the surface
     float lightIntensity = dot(lightDirection, normal);
-    if(lightIntensity <= 0.f)
+    if(lightIntensity < 0.f)
         return vec3(0.);
 
     HitRecord lightRecord;
@@ -185,15 +186,13 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
     if(hit_world(lightRay, 0.001, tMax, lightRecord))
         return vec3(0.f);
     
-    float percentDiffuse = 1.f - rec.material.specularChance;
     // Diffuse
-    vec3 diffuseColor = (pl.color *  rec.material.albedo)  * max(dot(normal, lightDirection), 0.0);
+    vec3 diffuseColor = (pl.color *  rec.material.diffuseChance * rec.material.albedo) * lightIntensity;
     // Specular
     vec3 halfwayVector = normalize(-viewDirection + lightDirection);
     float specAngle = max(dot(halfwayVector, normal), 0.f);
     float ksSpecular = pow(specAngle, rec.material.shininess) * rec.material.specularChance;
     vec3 specularColor = pl.color *  ksSpecular * rec.material.specularColor;
-    
 	return diffuseColor + specularColor;
 }
 
@@ -201,20 +200,15 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
 
 vec3 rayColor(Ray ray)
 {
-    
-    currRefractIndex = 1.f;
     HitRecord rec;
 
     vec3 color = vec3(0.0);
     vec3 throughput = vec3(1.0f, 1.0f, 1.0f);
     for(int i = 0; i < MAX_BOUNCES; ++i)
-    {
-        viewDirection = ray.direction;
+    {   
         if(hit_world(ray, 0.001, 10000.0, rec))
-        {
-           
-            
-            //calculate direct lighting with 3 white point lights:
+        {      
+            // Calculate direct lighting with 3 white point lights:
             {
                 pointLight pl0 = createPointLight(vec3(-10.0, 15.0, 0.0), vec3(1.0, 1.0, 1.0));
                 pointLight pl1 = createPointLight(vec3(8.0, 15.0, 3.0), vec3(1.0, 1.0, 1.0));
@@ -222,11 +216,10 @@ vec3 rayColor(Ray ray)
 
                 color += directlighting(pl0, ray, rec) * throughput;
                 color += directlighting(pl1, ray, rec) * throughput;
-                color += directlighting(pl2, ray, rec) * throughput;
-               
+                color += directlighting(pl2, ray, rec) * throughput;    
             }
            
-            //calculate secondary ray and update throughput
+            // Calculate secondary ray and update throughput
             Ray scatterRay;
             vec3 atten;
             if(scatter(ray, rec, atten, scatterRay))
@@ -245,100 +238,7 @@ vec3 rayColor(Ray ray)
                     // Add the energy we 'lose' by randomly terminating paths
                     throughput *= 1.0f / p;
                 }
-            }  
-            /** /
-            if(rec.hitFromInside)
-                throughput *= exp(-rec.material.refractionColor * rec.t);
-            
-             // get the pre-fresnel chances
-            float specularChance = rec.material.specularChance;
-            float refractionChance = rec.material.refractionChance;
-
-            // add in emissive lighting
-            color += rec.material.emissive * throughput;
-
-            // take fresnel into account for specularChance and adjust other chances.
-            // specular takes priority.
-            // chanceMultiplier makes sure we keep diffuse / refraction ratio the same.
-            if (specularChance > 0.0f)
-            {
-                specularChance = fresnelReflectAmount(
-                    rec.hitFromInside ? rec.material.refractionIndex : 1.0,
-                    !rec.hitFromInside ? rec.material.refractionIndex : 1.0,
-                    ray.direction, rec.normal, rec.material.specularChance, 1.0f);
-            
-                float chanceMultiplier = (1.0f - specularChance) / (1.0f - rec.material.specularChance);
-                refractionChance *= chanceMultiplier;
             }
-
-            // calculate whether we are going to do a diffuse, specular, or refractive ray
-            float doSpecular = 0.0f;
-            float doRefraction = 0.0f;
-            float raySelectRoll = hash1(gSeed);
-            float rayProbability = 1.0f;
-            if (specularChance > 0.0f && raySelectRoll < specularChance)
-            {
-                doSpecular = 1.0f;
-                rayProbability = specularChance;
-            }
-            else if (refractionChance > 0.0f && raySelectRoll < specularChance + refractionChance)
-            {
-                doRefraction = 1.0f;
-                rayProbability = refractionChance;
-            }
-            else
-            {
-                // Bassically one for difusse materials
-                rayProbability = 1.0f - (specularChance + refractionChance);
-            }
-
-            // Numerical problems can cause rayProbability to become small enough to cause a divide by zero.
-		    rayProbability = max(rayProbability, 0.001f);
-            // update the ray position
-            if (doRefraction == 1.0f)
-                ray.origin =  rec.pos - rec.normal * 0.0001f;
-            else
-                ray.origin =  rec.pos + rec.normal * 0.0001f;
-
-            // Calculate a new ray direction.
-            // Diffuse uses a normal oriented cosine weighted hemisphere sample.
-            // Perfectly smooth specular uses the reflection ray.
-            // Rough (glossy) specular lerps from the smooth specular to the rough diffuse by the material roughness squared
-            // Squaring the roughness is just a convention to make roughness feel more linear perceptually.
-            vec3 diffuseRayDir = normalize(rec.normal + randomInUnitSphere(gSeed)); 
-            
-            vec3 specularRayDir = reflect(ray.direction, rec.normal);         
-            specularRayDir = normalize(mix(specularRayDir, diffuseRayDir, rec.material.specularRoughness * rec.material.specularRoughness));
-
-            vec3 refractionRayDir = refract(ray.direction, rec.normal, rec.hitFromInside ? rec.material.refractionIndex : 1.0f / rec.material.refractionIndex);
-            refractionRayDir = normalize(mix(refractionRayDir, normalize(-rec.normal + randomInUnitSphere(gSeed)), rec.material.refractionRoughness*rec.material.refractionRoughness));
-
-            ray.direction = mix(diffuseRayDir, specularRayDir, doSpecular);
-            ray.direction = mix(ray.direction, refractionRayDir, doRefraction);
-
-            // add in emissive lighting
-            color += rec.material.emissive * throughput;
-
-            // update the colorMultiplier. refraction doesn't alter the color until we hit the next thing, so we can do light absorption over distance.
-            if (doRefraction == 0.0f)
-                throughput *= mix(rec.material.albedo, rec.material.specularColor, doSpecular);
-            
-            // since we chose randomly between diffuse, specular, refract,
-            // we need to account for the times we didn't do one or the other.
-            throughput /= rayProbability;
-            
-            // Russian Roulette
-            // As the throughput gets smaller, the ray is more likely to get terminated early.
-            // Survivors have their value boosted to make up for fewer samples being in the average.
-            {
-                float p = max(throughput.r, max(throughput.g, throughput.b));
-                if (hash1(gSeed) > p)
-                    break;
-
-                // Add the energy we 'lose' by randomly terminating paths
-                throughput *= 1.0f / p;            
-            }
-            /**/
         }
         else  // Background
         {
@@ -351,17 +251,7 @@ vec3 rayColor(Ray ray)
 }
 
 #define MAX_SAMPLES 5000.0
-// ACES tone mapping curve fit to go from HDR to LDR
-//https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-vec3 ACESFilm(vec3 x)
-{
-    float a = 2.51f;
-    float b = 0.03f;
-    float c = 2.43f;
-    float d = 0.59f;
-    float e = 0.14f;
-    return clamp((x*(a*x + b)) / (x*(c*x + d) + e), 0.0f, 1.0f);
-}
+
 void main()
 {
     gSeed = float(baseHash(floatBitsToUint(gl_FragCoord.xy))) / float(0xffffffffU) + iTime;
@@ -395,7 +285,6 @@ void main()
     vec2 ps = gl_FragCoord.xy + hash2(gSeed);
     //vec2 ps = gl_FragCoord.xy;
     vec3 color = rayColor(getRay(cam, ps));
-
     if(iMouseButton.x != 0.0 || iMouseButton.y != 0.0)
     {
         gl_FragColor = vec4(toGamma(color), 1.0);  //samples number reset = 1
@@ -407,7 +296,7 @@ void main()
         return;
     }
 
-    float w = prev.w + 1.0;
-    color = mix(prevLinear, color, 1.0/w);
+    float w = prev.w + 1.f;
+    color = mix(prevLinear, color, 1.0/w); 
     gl_FragColor = vec4(toGamma(color), w);
 }
