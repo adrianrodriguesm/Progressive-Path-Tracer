@@ -12,6 +12,8 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
     bool hit = false;
     rec.t = tmax;
     rec.hitFromInside = false;
+/**/ 
+    // Ground
     if(hit_triangle(createTriangle(vec3(-10.0, -0.01, 10.0), vec3(10.0, -0.01, 10.0), vec3(-10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
     {
         hit = true;
@@ -23,7 +25,8 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         hit = true;
         rec.material = createDiffuseMaterial(vec3(0.2));
     }
-
+/**/
+    // Left sphere
     if(hit_sphere(
         createSphere(vec3(-4.0, 1.0, 0.0), 1.0),
         r,
@@ -35,7 +38,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         rec.material = createDiffuseMaterial(vec3(0.2, 0.95, 0.1));
         //rec.material = createDiffuseMaterial(vec3(0.4, 0.2, 0.1));
     }
-
+    // Right sphere
     if(hit_sphere(
         createSphere(vec3(4.0, 1.0, 0.0), 1.0),
         r,
@@ -47,6 +50,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         rec.material = createMetalMaterial(vec3(0.7, 0.6, 0.5), 0.f);
     }
 /**/
+    // Middle sphere
     if(hit_sphere(
         createSphere(vec3(0.0, 1.0, 0.0), 1.0),
         r,
@@ -58,6 +62,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         rec.material = createDialectricMaterial(vec3(1.0), 1.5);
     }
 /**/
+    // Inside sphere
     if(hit_sphere(
         createSphere(vec3(0.0, 1.0, 0.0), -0.55),
         r,
@@ -86,8 +91,8 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                 if(chooseMaterial < 0.3)
                 {
                     vec3 center1 = center + vec3(0.0, hash1(gSeed) * 0.5, 0.0);
-                    /** /
-                    // diffuse
+                    /**/
+                    // Diffuse
                     if(hit_movingSphere(
                         createMovingSphere(center, center1, 0.2, 0.0, 1.0),
                         r,
@@ -102,7 +107,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                 }
                 else if(chooseMaterial < 0.5)
                 {
-                    // diffuse
+                    // Diffuse
                     if(hit_sphere(
                         createSphere(center, 0.2),
                         r,
@@ -116,7 +121,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                 }
                 else if(chooseMaterial < 0.7)
                 {
-                    // metal
+                    // Metal
                     if(hit_sphere(
                         createSphere(center, 0.2),
                         r,
@@ -131,7 +136,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                 }
                 else if(chooseMaterial < 0.9)
                 {
-                    // metal
+                    // Metal
                     if(hit_sphere(
                         createSphere(center, 0.2),
                         r,
@@ -147,7 +152,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                 else
                 {
                     /**/
-                    // glass (dialectric)
+                    // Glass (dialectric)
                     if(hit_sphere(
                         createSphere(center, 0.2),
                         r,
@@ -188,7 +193,7 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
     
     // Diffuse
     vec3 diffuseColor = (pl.color *  rec.material.diffusePercent * rec.material.albedo) * lightIntensity;
-    // Specular
+    // Speculars
     vec3 halfwayVector = normalize(-viewDirection + lightDirection);
     float specAngle = max(dot(halfwayVector, normal), 0.f);
     float ksSpecular = pow(specAngle, rec.material.shininess) * rec.material.specularPercent;
@@ -250,7 +255,7 @@ vec3 rayColor(Ray ray)
     return color;
 }
 
-#define MAX_SAMPLES 5000.0
+#define MAX_SAMPLES 10000.0
 
 void main()
 {

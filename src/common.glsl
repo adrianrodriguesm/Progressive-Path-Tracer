@@ -162,23 +162,7 @@ struct Material
     float specularRoughness;    // how rough the specular reflections are
     vec3  specularColor;        // the color tint of specular reflections
     float refractionIndex;      // index of refraction. used by fresnel and refraction.
-    float refractionRoughness;  // how rough the refractive transmissions are
-    vec3  refractionColor;      // absorption for beer's law 
 };
-
-Material createDiffuseMaterial(vec3 albedo)
-{
-    Material material;
-    material.type = MT_DIFFUSE;
-    material.albedo = albedo;
-    material.shininess = 10.f;
-    material.diffusePercent = 1.f;
-    material.specularPercent = 0.f;
-    material.specularRoughness = 0.0f;
-    material.specularColor = vec3(.1f); // Grey 
-    material.refractionIndex = 0.f;
-    return material;
-}
 Material createZeroedMaterial()
 {
     Material ret;
@@ -192,6 +176,21 @@ Material createZeroedMaterial()
     ret.refractionRoughness = 0.0f;
     return ret;
 }
+// Some of this values could be sent as a parameter (e.g shininess)
+Material createDiffuseMaterial(vec3 albedo)
+{
+    Material material;
+    material.type = MT_DIFFUSE;
+    material.albedo = albedo;
+    material.shininess = 10.f;
+    material.diffusePercent = 1.f;
+    material.specularPercent = 0.f;
+    material.specularRoughness = 0.0f;
+    material.specularColor = vec3(.1f); // Grey 
+    material.refractionIndex = 0.f;
+    return material;
+}
+
 Material createMetalMaterial(vec3 specular, float roughness)
 {
     Material material;
@@ -215,7 +214,7 @@ Material createDialectricMaterial(vec3 albedo, float refIdx)
     material.diffusePercent = 0.f;       
     material.specularPercent = .7f;
     material.specularRoughness = 0.f;
-    material.specularColor = albedo; 
+    material.specularColor = vec3(0); 
     material.refractionIndex = refIdx;
     return material;
 }
@@ -224,7 +223,7 @@ struct HitRecord
 {
     vec3 pos;
     vec3 normal;
-    float t;            // ray parameter
+    float t;        // Ray parameter
     bool hitFromInside;
     Material material;
 };
@@ -249,21 +248,20 @@ float fresnelReflectAmount(float n1, float n2, float incident)
 bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
 {
     vec3 normal = rec.hitFromInside ? normalize(rec.normal * -1.f) : normalize(rec.normal);
-    vec3 rayDir = rayIn.direction;
-    vec3 inveRayDir = normalize(rayIn.direction * -1.f);
+
     if(rec.material.type == MT_DIFFUSE)
     {
-        vec3 rayOrigin = rec.pos + rec.normal * displacementBias;
-        vec3 s = rayOrigin + rec.normal + randomInUnitSphere(gSeed);
+        vec3 rayOrigin = rec.pos + normal * displacementBias;
+        vec3 s = rayOrigin + normal + randomInUnitSphere(gSeed);
         vec3 rayDirection = normalize(s - rayOrigin);
         rScattered = createRay(rec.pos, rayDirection);
-        atten = rec.material.albedo * max(dot(rScattered.direction, rec.normal), 0.0) / pi;
+        atten = rec.material.albedo * max(dot(rScattered.direction, normal), 0.0) / pi;
         return true;
     }
     if(rec.material.type == MT_METAL)
     {
-        vec3 rayOrigin = rec.pos + rec.normal * displacementBias;
-        vec3 rayDirection = normalize(reflect(rayIn.direction, rec.normal));
+        vec3 rayOrigin = rec.pos + normal * displacementBias;
+        vec3 rayDirection = normalize(reflect(rayIn.direction, normal));
         rayDirection = normalize(rayDirection + randomInUnitSphere(gSeed) * rec.material.specularRoughness);
         rScattered = createRay(rayOrigin, rayDirection);
         atten = rec.material.specularColor;
@@ -271,28 +269,28 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
     }
     if(rec.material.type == MT_DIALECTRIC)
     {
+        vec3 rayDir = normalize(rayIn.direction);
+        vec3 inveRayDir = normalize(rayDir * -1.f);
+
         float incidentAngle = acos(dot(normal, inveRayDir));
         float sinIncidentAngle = sin(incidentAngle);
         if(sinIncidentAngle <= 0.f)
-        {
-            
             return false;
-        }
-        // take fresnel into account for specularChance and adjust other chances.
-        // specular takes priority.
+        // Take fresnel into account for specularChance and adjust other chances.
         atten = rec.material.albedo;
         float specularChance = fresnelReflectAmount(
                 rec.hitFromInside ? rec.material.refractionIndex : 1.0f,
                 !rec.hitFromInside ? rec.material.refractionIndex : 1.0f,
-                 incidentAngle);
-        // calculate whether we are going to do a diffuse, specular, or refractive ray
+                incidentAngle);
+        // Calculate whether we are going to do a reflective, or refractive ray
         float rayProbability = 1.0f;
         if (hash1(gSeed) < specularChance)
         {
             rayProbability = specularChance;
             rScattered.origin =  rec.pos + normal * displacementBias;
-            vec3 specularRayDir = reflect(rayDir, normal);         
+            vec3 specularRayDir = normalize(reflect(rayDir, normal));         
             rScattered.direction = normalize(specularRayDir + randomInUnitSphere(gSeed) * rec.material.specularRoughness);
+            rScattered.direction = reflect(rayDir, normal);  
         }
         else
         {
@@ -301,10 +299,8 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
             rScattered.direction = refract(inveRayDir, normal, rec.hitFromInside ? rec.material.refractionIndex : 1.0f / rec.material.refractionIndex);
             
         }
-        atten /= rayProbability;
+        atten *= rayProbability;
         return true;
-        /**/
-
     }
     return false;
 }
@@ -396,15 +392,13 @@ MovingSphere createMovingSphere(vec3 center0, vec3 center1, float radius, float 
 
 vec3 center(MovingSphere mvsphere, float time)
 {
-    return vec3(0.f);
-    //return moving_center;
+    return mvsphere.center0 + (mvsphere.center1 - mvsphere.center0) * ((time - mvsphere.time0) / (mvsphere.time1 - mvsphere.time0));   
 }
 
 /*
  * The function naming convention changes with these functions to show that they implement a sort of interface for
  * the book's notion of "hittable". E.g. hit_<type>.
  */
-
 bool hit_sphere(Sphere sphere, Ray ray, float tmin, float tmax, out HitRecord rec)
 {
     
@@ -451,21 +445,44 @@ bool hit_sphere(Sphere sphere, Ray ray, float tmin, float tmax, out HitRecord re
 
 bool hit_movingSphere(MovingSphere sphere, Ray ray, float tmin, float tmax, out HitRecord rec)
 {
-    float B, C, delta;
-    bool outside;
-    float t;
+    // Calculate a valid t and normal
+	// Center and origin inversed and signs of b inversed for sphere optimization
+    vec3 temp = center(sphere, ray.time) - ray.origin;
 
+    float b = dot(temp, ray.direction);
+    float c = dot(temp, temp) - sphere.radius * sphere.radius;
+    // If origin outside and pointing away from sphere
+    if (c > 0.f && b <= 0.f)
+        return false;
 
-     //INSERT YOUR CODE HERE
-     //Calculate the moving center
-    //calculate a valid t and normal
-	
-    if(t < tmax && t > tmin) {
+    float a = 1.f;    // length of ray.Direction should be 1 
+    float disc = b * b - a * c;
+
+    if (disc <= 0.0)
+        return false;
+
+    float e = sqrt(disc);
+    float t = (b - e); // root 1
+
+    if (t > epsilon && t < tmax && t > tmin)
+    {
         rec.t = t;
         rec.pos = pointOnRay(ray, rec.t);
-        rec.normal = normalize(rec.pos - sphere.center0);
+        rec.hitFromInside = (dot((rec.pos - center(sphere, ray.time)), ray.direction)) > 0.f;
+        rec.normal = normalize(rec.pos - center(sphere, ray.time));
         return true;
     }
-    else return false;
+    
+    t = (b + e); //root 2
+
+    if (t > epsilon && t < tmax && t > tmin)
+    {
+        rec.t = t;
+        rec.pos = pointOnRay(ray, rec.t);
+        rec.hitFromInside = (dot((rec.pos - center(sphere, ray.time)), ray.direction)) > 0.f;
+        rec.normal =  normalize(rec.pos - center(sphere, ray.time));
+        return true;
+    }
+    return  false;
     
 }
