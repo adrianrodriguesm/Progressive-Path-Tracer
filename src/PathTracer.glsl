@@ -130,7 +130,6 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                         rec))
                     {
                         hit = true;
-                       // rec.material.type = MT_METAL;
                         rec.material = createMetalMaterial((hash3(seed) + 1.0) * 0.5, 0.0);
                     }
                 }
@@ -145,7 +144,6 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                         rec))
                     {
                         hit = true;
-                       // rec.material.type = MT_METAL;
                         rec.material = createMetalMaterial((hash3(seed) + 1.0) * 0.5, hash1(seed));
                     }
                 }
@@ -172,7 +170,168 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
     /**/
     return hit;
 }
+bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
+{
+    bool hit = false;
+    rec.t = tmax;
+    rec.hitFromInside = false;
+/**/ 
+    // Ground
+    if(hit_triangle(createTriangle(vec3(-10.0, -0.01, 10.0), vec3(10.0, -0.01, 10.0), vec3(-10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
+    {
+       // rec.material = createDiffuseMaterial(vec3(0.2));
+        return true;
+    }
 
+    if(hit_triangle(createTriangle(vec3(-10.0, -0.01, -10.0), vec3(10.0, -0.01, 10), vec3(10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
+    {
+        //rec.material = createDiffuseMaterial(vec3(0.2));
+        return true;
+    }
+/**/
+    // Left sphere
+    if(hit_sphere(
+        createSphere(vec3(-4.0, 1.0, 0.0), 1.0),
+        r,
+        tmin,
+        rec.t,
+        rec))
+    {
+        //rec.material = createDiffuseMaterial(vec3(0.2, 0.95, 0.1));
+        return true;
+    }
+    // Right sphere
+    if(hit_sphere(
+        createSphere(vec3(4.0, 1.0, 0.0), 1.0),
+        r,
+        tmin,
+        rec.t,
+        rec))
+    {
+        //rec.material = createMetalMaterial(vec3(0.7, 0.6, 0.5), 0.f);
+        return true;
+    }
+/** /
+    // Middle sphere
+    if(hit_sphere(
+        createSphere(vec3(0.0, 1.0, 0.0), 1.0),
+        r,
+        tmin,
+        rec.t,
+        rec))
+    {
+        hit = true;
+        rec.material = createDialectricMaterial(vec3(1.0), 1.5);
+    }
+/** /
+    // Inside sphere
+    if(hit_sphere(
+        createSphere(vec3(0.0, 1.0, 0.0), -0.55),
+        r,
+        tmin,
+        rec.t,
+        rec))
+    {
+        hit = true;
+        rec.material = createDialectricMaterial(vec3(1.0), 1.5);
+    }
+/**/
+    int numxy = 5;
+    
+    for(int x = -numxy; x < numxy; ++x)
+    {
+        for(int y = -numxy; y < numxy; ++y)
+        {
+            float fx = float(x);
+            float fy = float(y);
+            float seed = fx + fy / 1000.0;
+            vec3 rand1 = hash3(seed);
+            vec3 center = vec3(fx + 0.9 * rand1.x, 0.2, fy + 0.9 * rand1.y);
+            float chooseMaterial = rand1.z;
+            if(distance(center, vec3(4.0, 0.2, 0.0)) > 0.9)
+            {
+                if(chooseMaterial < 0.3)
+                {
+                    vec3 center1 = center + vec3(0.0, hash1(gSeed) * 0.5, 0.0);
+                    /**/
+                    // Diffuse
+                    if(hit_movingSphere(
+                        createMovingSphere(center, center1, 0.2, 0.0, 1.0),
+                        r,
+                        tmin,
+                        rec.t,
+                        rec))
+                    {
+                        //rec.material = createDiffuseMaterial(hash3(seed) * hash3(seed));
+                        return true;
+                    }
+                    /**/
+                }
+                else if(chooseMaterial < 0.5)
+                {
+                    // Diffuse
+                    if(hit_sphere(
+                        createSphere(center, 0.2),
+                        r,
+                        tmin,
+                        rec.t,
+                        rec))
+                    {
+                       // rec.material = createDiffuseMaterial(hash3(seed) * hash3(seed));
+                        return true;
+                    }
+                }
+                else if(chooseMaterial < 0.7)
+                {
+                    // Metal
+                    if(hit_sphere(
+                        createSphere(center, 0.2),
+                        r,
+                        tmin,
+                        rec.t,
+                        rec))
+                    {
+                       // rec.material.type = MT_METAL;
+                       // rec.material = createMetalMaterial((hash3(seed) + 1.0) * 0.5, 0.0);
+                        return true;
+                    }
+                }
+                else if(chooseMaterial < 0.9)
+                {
+                    // Metal
+                    if(hit_sphere(
+                        createSphere(center, 0.2),
+                        r,
+                        tmin,
+                        rec.t,
+                        rec))
+                    {
+                       // rec.material.type = MT_METAL;
+                       // rec.material = createMetalMaterial((hash3(seed) + 1.0) * 0.5, hash1(seed));
+                        return true;
+                    }
+                }
+                /** /
+                else
+                {
+                   
+                    // Glass (dialectric)
+                    if(hit_sphere(
+                        createSphere(center, 0.2),
+                        r,
+                        tmin,
+                        rec.t,
+                        rec))
+                    {
+                        rec.material.type = MT_DIALECTRIC;
+                        rec.material = createDialectricMaterial(hash3(seed), 1.5);
+                    }
+                    /**/
+                }
+            }
+        }
+    return false;
+}
 vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
 {
     vec3 normal = normalize(rec.normal);
@@ -188,7 +347,7 @@ vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
 
     HitRecord lightRecord;
     Ray lightRay = createRay(emissionPoint,lightDirection);
-    if(hit_world(lightRay, 0.001, tMax, lightRecord))
+    if(hit_world_shadow(lightRay, 0.001, tMax, lightRecord))
         return vec3(0.f);
     
     // Diffuse

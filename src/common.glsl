@@ -173,7 +173,6 @@ Material createZeroedMaterial()
     ret.diffusePercent = 0.f;
     ret.specularColor = vec3(0.0f, 0.0f, 0.0f);
     ret.refractionIndex = 1.0f;
-    ret.refractionRoughness = 0.0f;
     return ret;
 }
 // Some of this values could be sent as a parameter (e.g shininess)
@@ -236,12 +235,12 @@ float schlick(float cosine, float refractionIndex, float otherRefIndex)
     return R0 + (1.0f - R0) * pow(max(1.0f - cosine, 0.0), 5.0f);
 }
 /**/
-float fresnelReflectAmount(float n1, float n2, float incident)
+float fresnelReflectAmount(float n1, float n2, float incidentAngle)
 {
         // Schlick aproximation
         float r0 = (n1-n2) / (n1+n2);
         r0 *= r0;
-        float x = 1.0 - cos(incident);
+        float x = 1.0 - cos(incidentAngle);
         return r0 + (1.0-r0) *x*x*x*x*x;
 }
 
@@ -261,7 +260,7 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
     if(rec.material.type == MT_METAL)
     {
         vec3 rayOrigin = rec.pos + normal * displacementBias;
-        vec3 rayDirection = normalize(reflect(rayIn.direction, normal));
+        vec3 rayDirection = normalize(reflect(normalize(rayIn.direction), normal));
         rayDirection = normalize(rayDirection + randomInUnitSphere(gSeed) * rec.material.specularRoughness);
         rScattered = createRay(rayOrigin, rayDirection);
         atten = rec.material.specularColor;
@@ -276,6 +275,7 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
         float sinIncidentAngle = sin(incidentAngle);
         if(sinIncidentAngle <= 0.f)
             return false;
+
         // Take fresnel into account for specularChance and adjust other chances.
         atten = rec.material.albedo;
         float specularChance = fresnelReflectAmount(
@@ -289,8 +289,7 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
             rayProbability = specularChance;
             rScattered.origin =  rec.pos + normal * displacementBias;
             vec3 specularRayDir = normalize(reflect(rayDir, normal));         
-            rScattered.direction = normalize(specularRayDir + randomInUnitSphere(gSeed) * rec.material.specularRoughness);
-            rScattered.direction = reflect(rayDir, normal);  
+            rScattered.direction = normalize(specularRayDir + randomInUnitSphere(gSeed) * rec.material.specularRoughness);  
         }
         else
         {
