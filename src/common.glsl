@@ -378,20 +378,20 @@ struct MovingSphere
     float time0, time1;
 };
 
-MovingSphere createMovingSphere(vec3 center0, vec3 center1, float radius, float time0, float time1)
+MovingSphere createMovingSphere(vec3 center0, vec3 center1, float radius)
 {
     MovingSphere s;
     s.center0 = center0;
     s.center1 = center1;
     s.radius = radius;
-    s.time0 = time0;
-    s.time1 = time1;
+    s.time0 = 0.f;
+    s.time1 = 1.f;
     return s;
 }
 
 vec3 center(MovingSphere mvsphere, float time)
 {
-    return mvsphere.center0 + (mvsphere.center1 - mvsphere.center0) * ((time - mvsphere.time0) / (mvsphere.time1 - mvsphere.time0));   
+    return mvsphere.center0 * (1.f - time) + mvsphere.center1 * time;   
 }
 
 /*

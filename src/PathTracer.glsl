@@ -94,7 +94,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                     /**/
                     // Diffuse
                     if(hit_movingSphere(
-                        createMovingSphere(center, center1, 0.2, 0.0, 1.0),
+                        createMovingSphere(center, center1, 0.2),
                         r,
                         tmin,
                         rec.t,
@@ -256,7 +256,7 @@ bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
                     /**/
                     // Diffuse
                     if(hit_movingSphere(
-                        createMovingSphere(center, center1, 0.2, 0.0, 1.0),
+                        createMovingSphere(center, center1, 0.2),
                         r,
                         tmin,
                         rec.t,
@@ -368,21 +368,18 @@ vec3 rayColor(Ray ray)
 
     vec3 color = vec3(0.0);
     vec3 throughput = vec3(1.0f, 1.0f, 1.0f);
+    pointLight pl0 = createPointLight(vec3(-10.0, 15.0, 0.0), vec3(1.0, 1.0, 1.0));
+    pointLight pl1 = createPointLight(vec3(8.0, 15.0, 3.0), vec3(1.0, 1.0, 1.0));
+    pointLight pl2 = createPointLight(vec3(1.0, 15.0, -9.0), vec3(1.0, 1.0, 1.0));
     for(int i = 0; i < MAX_BOUNCES; ++i)
     {   
         if(hit_world(ray, 0.001, 10000.0, rec))
         {      
             // Calculate direct lighting with 3 white point lights:
-            {
-                pointLight pl0 = createPointLight(vec3(-10.0, 15.0, 0.0), vec3(1.0, 1.0, 1.0));
-                pointLight pl1 = createPointLight(vec3(8.0, 15.0, 3.0), vec3(1.0, 1.0, 1.0));
-                pointLight pl2 = createPointLight(vec3(1.0, 15.0, -9.0), vec3(1.0, 1.0, 1.0));
-
-                color += directlighting(pl0, ray, rec) * throughput;
-                color += directlighting(pl1, ray, rec) * throughput;
-                color += directlighting(pl2, ray, rec) * throughput;    
-            }
-           
+            color += directlighting(pl0, ray, rec) * throughput;
+            color += directlighting(pl1, ray, rec) * throughput;
+            color += directlighting(pl2, ray, rec) * throughput;    
+            
             // Calculate secondary ray and update throughput
             Ray scatterRay;
             vec3 atten;
