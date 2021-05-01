@@ -162,6 +162,7 @@ struct Material
     int type;
     vec3 albedo;                // the color used for diffuse lighting
     float shininess;
+    vec3 emissive;            // how much the surface glows
     float specularPercent;      // percentage chance of doing a specular reflection
     float diffusePercent;       // percentage chance of doing a specular reflection
     float specularRoughness;    // how rough the specular reflections are
@@ -186,6 +187,7 @@ Material createDiffuseMaterial(vec3 albedo)
     Material material;
     material.type = MT_DIFFUSE;
     material.albedo = albedo;
+    material.emissive = vec3(0.f);
     material.shininess = 10.f;
     material.diffusePercent = 1.f;
     material.specularPercent = 0.f;
@@ -200,6 +202,7 @@ Material createMetalMaterial(vec3 specular, float roughness)
     Material material;
     material.type = MT_METAL;
     material.albedo = vec3(0);
+    material.emissive = vec3(0.f);
     material.shininess = 220.f;
     material.diffusePercent = 0.f;     
     material.specularPercent = 1.f;
@@ -214,6 +217,7 @@ Material createDialectricMaterial(vec3 albedo, float refIdx)
     Material material;
     material.type = MT_DIALECTRIC;
     material.albedo = albedo;
+    material.emissive = vec3(0.f);
     material.shininess = 20.f;
     material.diffusePercent = 0.f;       
     material.specularPercent = 0.7f;
@@ -495,4 +499,105 @@ bool hit_movingSphere(MovingSphere sphere, Ray ray, float tmin, float tmax, out 
     }
     return  false;
     
+}
+
+struct Quad
+{
+    vec3 a,b,c,d;
+};
+
+Quad createQuad(vec3 a, vec3 b, vec3 c,vec3 d)
+{
+    Quad q;
+    q.a = a;
+    q.b = b;
+    q.c = c;
+    q.d = d;
+    return q;
+}
+
+float ScalarTriple(vec3 u, vec3 v, vec3 w)
+{
+    return dot(cross(u, v), w);
+}
+
+bool hit_quad(in Quad quad, in Ray ray, float tmin, float tmax, inout HitRecord info)
+{
+    // calculate normal and flip vertices order if needed
+    vec3 normal = normalize(cross(quad.c-quad.a, quad.c-quad.b));
+    if (dot(normal, ray.direction) > 0.0f)
+    {
+        normal *= -1.0f;
+        
+		vec3 temp = quad.d;
+        quad.d = quad.a;
+        quad.a = temp;
+        
+        temp = quad.b;
+        quad.b = quad.c;
+        quad.c = temp;
+    }
+    
+    vec3 p = ray.origin;
+    vec3 q = ray.origin + ray.direction;
+    vec3 pq = q - p;
+    vec3 pa = quad.a - p;
+    vec3 pb = quad.b - p;
+    vec3 pc = quad.c - p;
+    
+    // determine which triangle to test against by testing against diagonal first
+    vec3 m = cross(pc, pq);
+    float v = dot(pa, m);
+    vec3 intersectPos;
+    if (v >= 0.0f)
+    {
+        // test against triangle a,b,c
+        float u = -dot(pb, m);
+        if (u < 0.0f) return false;
+        float w = ScalarTriple(pq, pb, pa);
+        if (w < 0.0f) return false;
+        float denom = 1.0f / (u+v+w);
+        u*=denom;
+        v*=denom;
+        w*=denom;
+        intersectPos = u*quad.a+v*quad.b+w*quad.c;
+    }
+    else
+    {
+        vec3 pd = quad.d - p;
+        float u = dot(pd, m);
+        if (u < 0.0f) return false;
+        float w = ScalarTriple(pq, pa, pd);
+        if (w < 0.0f) return false;
+        v = -v;
+        float denom = 1.0f / (u+v+w);
+        u*=denom;
+        v*=denom;
+        w*=denom;
+        intersectPos = u*quad.a+v*quad.d+w*quad.c;
+    }
+    
+    float dist;
+    if (abs(ray.direction.x) > 0.1f)
+    {
+        dist = (intersectPos.x - ray.origin.x) / ray.direction.x;
+    }
+    else if (abs(ray.direction.y) > 0.1f)
+    {
+        dist = (intersectPos.y - ray.origin.y) / ray.direction.y;
+    }
+    else
+    {
+        dist = (intersectPos.z - ray.origin.z) / ray.direction.z;
+    }
+    
+	if (dist > tmin && dist < tmax)
+    {
+        info.hitFromInside = false;
+        info.t = dist;        
+        info.normal = normal;        
+        return true;
+    }    
+    
+    return false;
 }

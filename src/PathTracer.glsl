@@ -25,7 +25,31 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         hit = true;
         rec.material = createDiffuseMaterial(vec3(0.2));
     }
-/**/
+    // Emissive material
+    {
+        vec3 A = vec3(-4.0f, 5.4f,   2.5f);
+        vec3 B = vec3( 4.0f, 5.4f,  2.5f);
+        vec3 C = vec3( 4.0f, 5.4f,  -2.5f);
+        vec3 D = vec3(-4.0f, 5.4f,  -2.5f);
+        if(hit_quad(createQuad(A, B, C, D), r, tmin, rec.t, rec))
+        {
+            hit = true;
+            rec.material = createDiffuseMaterial(vec3(0.f));
+            rec.material.emissive = vec3(1, 0, 0) * 20.f;
+        
+        }
+        // Border
+        A = vec3(-4.5f, 5.4f,  3.0f);
+        B = vec3( 4.5f, 5.4f,  3.0f);
+        C = vec3( 4.5f, 5.4f, -3.0f);
+        D = vec3(-4.5f, 5.4f, -3.0f);
+        if(hit_quad(createQuad(A, B, C, D), r, tmin, rec.t, rec))
+        {
+            hit = true;
+            rec.material = createDiffuseMaterial(vec3(0.2f));
+        }
+    }
+ 
     // Left sphere
     if(hit_sphere(
         createSphere(vec3(-4.0, 1.0, 0.0), 1.0),
@@ -378,7 +402,9 @@ vec3 rayColor(Ray ray)
             // Calculate direct lighting with 3 white point lights:
             color += directlighting(pl0, ray, rec) * throughput;
             color += directlighting(pl1, ray, rec) * throughput;
-            color += directlighting(pl2, ray, rec) * throughput;    
+            color += directlighting(pl2, ray, rec) * throughput;
+            // add in emissive lighting
+            color += rec.material.emissive * throughput;   
             
             // Calculate secondary ray and update throughput
             Ray scatterRay;
@@ -386,8 +412,8 @@ vec3 rayColor(Ray ray)
             if(scatter(ray, rec, atten, scatterRay))
             {    
                 throughput *= atten;
+                
                 ray = scatterRay;
-
                 // Russian Roulette
                 // As the throughput gets smaller, the ray is more likely to get terminated early.
                 // Survivors have their value boosted to make up for fewer samples being in the average.
