@@ -26,7 +26,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         rec.material = createDiffuseMaterial(vec3(0.2));
     }
     // Emissive material
-    /** /
+    /**/
     {
         vec3 A = vec3(-4.0f, 5.4f,   2.5f);
         vec3 B = vec3( 4.0f, 5.4f,  2.5f);
@@ -85,6 +85,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
     {
         hit = true;
         rec.material = createDialectricMaterial(vec3(1.0), 1.5f);
+        rec.material.refractionColor = vec3(0,0,1);
     }
 /**/
     // Inside sphere
@@ -413,7 +414,10 @@ vec3 rayColor(Ray ray)
             if(scatter(ray, rec, atten, scatterRay))
             {    
                 throughput *= atten;
-                
+                // Do absorption if we are hitting from inside the object (Beer's Law)
+                if (rec.hitFromInside)
+                    throughput *= exp(-rec.material.refractionColor * rec.t);
+
                 ray = scatterRay;
                 // Russian Roulette
                 // As the throughput gets smaller, the ray is more likely to get terminated early.

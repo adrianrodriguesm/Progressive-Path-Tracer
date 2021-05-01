@@ -3,9 +3,9 @@
  * Common types and functions used for ray tracing.
  */
 
-const float pi = 3.14159265358979;
-const float epsilon = 0.001;
-const float displacementBias = 1.E-4;
+const float pi = 3.14159265358979f;
+const float epsilon = 0.001f;
+const float displacementBias = 1.E-4f;
 struct Ray
 {
     vec3 origin;        // origin
@@ -166,6 +166,7 @@ struct Material
     float specularRoughness;    // how rough the specular reflections are
     vec3  specularColor;        // the color tint of specular reflections
     float refractionIndex;      // index of refraction. used by fresnel and refraction.
+    vec3 refractionColor;      // absorption for beer's law 
 };
 Material createZeroedMaterial()
 {
@@ -177,6 +178,7 @@ Material createZeroedMaterial()
     ret.diffusePercent = 0.f;
     ret.specularColor = vec3(0.0f, 0.0f, 0.0f);
     ret.refractionIndex = 1.0f;
+     ret.refractionColor = vec3(0.0f, 0.0f, 0.0f);
     return ret;
 }
 // Some of this values could be sent as a parameter (e.g shininess)
@@ -192,6 +194,7 @@ Material createDiffuseMaterial(vec3 albedo)
     material.specularRoughness = 0.0f;
     material.specularColor = vec3(.1f); // Grey 
     material.refractionIndex = 0.f;
+    material.refractionColor = vec3(0.0f, 0.0f, 0.0f);
     return material;
 }
 
@@ -207,6 +210,7 @@ Material createMetalMaterial(vec3 specular, float roughness)
     material.specularRoughness = roughness;
     material.specularColor = specular;
     material.refractionIndex = 0.f;
+    material.refractionColor = vec3(0.0f, 0.0f, 0.0f);
     return material;
 }
 
@@ -222,6 +226,7 @@ Material createDialectricMaterial(vec3 albedo, float refIdx)
     material.specularRoughness = 0.5f;
     material.specularColor = vec3(0); 
     material.refractionIndex = refIdx;
+    material.refractionColor = vec3(0.0f, 0.0f, 0.0f);
     return material;
 }
 
