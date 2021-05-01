@@ -26,6 +26,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         rec.material = createDiffuseMaterial(vec3(0.2));
     }
     // Emissive material
+    /** /
     {
         vec3 A = vec3(-4.0f, 5.4f,   2.5f);
         vec3 B = vec3( 4.0f, 5.4f,  2.5f);
@@ -49,7 +50,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
             rec.material = createDiffuseMaterial(vec3(0.2f));
         }
     }
- 
+    /**/
     // Left sphere
     if(hit_sphere(
         createSphere(vec3(-4.0, 1.0, 0.0), 1.0),
@@ -83,7 +84,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         rec))
     {
         hit = true;
-        rec.material = createDialectricMaterial(vec3(1.0), 1.5);
+        rec.material = createDialectricMaterial(vec3(1.0), 1.5f);
     }
 /**/
     // Inside sphere
@@ -351,15 +352,15 @@ bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
                         rec.material = createDialectricMaterial(hash3(seed), 1.5);
                     }
                     /**/
-                }
             }
         }
+    }
     return false;
 }
 vec3 directlighting(PointLight pl, Ray r, HitRecord rec)
 {
-    vec3 normal = normalize(rec.normal);
-    vec3 viewDirection = normalize(r.direction);
+    vec3 normal = rec.normal;
+    vec3 viewDirection = r.direction;
     vec3 emissionPoint = rec.pos + normal * displacementBias;
     vec3 lightDirection = pl.pos - rec.pos;
     float tMax = length(lightDirection);
@@ -403,7 +404,7 @@ vec3 rayColor(Ray ray)
             color += directlighting(pl0, ray, rec) * throughput;
             color += directlighting(pl1, ray, rec) * throughput;
             color += directlighting(pl2, ray, rec) * throughput;
-            // add in emissive lighting
+            // Add in emissive lighting
             color += rec.material.emissive * throughput;   
             
             // Calculate secondary ray and update throughput

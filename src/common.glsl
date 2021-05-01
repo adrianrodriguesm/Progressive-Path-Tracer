@@ -221,7 +221,7 @@ Material createDialectricMaterial(vec3 albedo, float refIdx)
     material.shininess = 20.f;
     material.diffusePercent = 0.f;       
     material.specularPercent = 0.7f;
-    material.specularRoughness = 0.f;
+    material.specularRoughness = 0.5f;
     material.specularColor = vec3(0); 
     material.refractionIndex = refIdx;
     return material;
@@ -266,7 +266,7 @@ float fresnelReflectAmount(float n1, float n2, float incidentAngle)
 
 bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
 {
-    vec3 normal = rec.hitFromInside ? normalize(rec.normal * -1.f) : normalize(rec.normal);
+    vec3 normal = rec.normal;
 
     if(rec.material.type == MT_DIFFUSE)
     {
@@ -280,7 +280,7 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
     if(rec.material.type == MT_METAL)
     {
         vec3 rayOrigin = rec.pos + normal * displacementBias;
-        vec3 rayDirection = normalize(reflect(normalize(rayIn.direction), normal));
+        vec3 rayDirection = normalize(reflect(rayIn.direction, normal));
         rayDirection = normalize(rayDirection + randomInUnitSphere(gSeed) * rec.material.specularRoughness);
         rScattered = createRay(rayOrigin, rayDirection, rayIn.time);
         atten = rec.material.specularColor;
@@ -288,8 +288,8 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
     }
     if(rec.material.type == MT_DIALECTRIC)
     {
-        vec3 rayDir = normalize(rayIn.direction);
-        vec3 inveRayDir = normalize(rayDir * -1.f);
+        vec3 rayDir = rayIn.direction;
+        vec3 inveRayDir = rayDir * -1.f;
 
         float incidentAngle = -dot(normal, rayDir);
         // Take fresnel into account for specularChance and adjust other chances.
@@ -441,6 +441,7 @@ bool hit_sphere(Sphere sphere, Ray ray, float tmin, float tmax, out HitRecord re
         rec.pos = pointOnRay(ray, rec.t);
         rec.hitFromInside = (dot((rec.pos - sphere.center), ray.direction)) > 0.f;
         rec.normal = normalize(rec.pos - sphere.center);
+        rec.normal *= (rec.hitFromInside ? -1.f : 1.f);
         return true;
     }
     
@@ -451,7 +452,8 @@ bool hit_sphere(Sphere sphere, Ray ray, float tmin, float tmax, out HitRecord re
         rec.t = t;
         rec.pos = pointOnRay(ray, rec.t);
         rec.hitFromInside = (dot((rec.pos - sphere.center), ray.direction)) > 0.f;
-        rec.normal =  normalize(rec.pos - sphere.center);
+        rec.normal = normalize(rec.pos - sphere.center);
+        rec.normal *= (rec.hitFromInside ? -1.f : 1.f);
         return true;
     }
     return  false;
@@ -484,6 +486,7 @@ bool hit_movingSphere(MovingSphere sphere, Ray ray, float tmin, float tmax, out 
         rec.pos = pointOnRay(ray, rec.t);
         rec.hitFromInside = (dot((rec.pos - center(sphere, ray.time)), ray.direction)) > 0.f;
         rec.normal = normalize(rec.pos - center(sphere, ray.time));
+        rec.normal *= (rec.hitFromInside ? -1.f : 1.f);
         return true;
     }
     
@@ -495,6 +498,7 @@ bool hit_movingSphere(MovingSphere sphere, Ray ray, float tmin, float tmax, out 
         rec.pos = pointOnRay(ray, rec.t);
         rec.hitFromInside = (dot((rec.pos - center(sphere, ray.time)), ray.direction)) > 0.f;
         rec.normal =  normalize(rec.pos - center(sphere, ray.time));
+        rec.normal *= (rec.hitFromInside ? -1.f : 1.f);
         return true;
     }
     return  false;
