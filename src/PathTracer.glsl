@@ -332,7 +332,7 @@ bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
         }
     return false;
 }
-vec3 directlighting(pointLight pl, Ray r, HitRecord rec)
+vec3 directlighting(PointLight pl, Ray r, HitRecord rec)
 {
     vec3 normal = normalize(rec.normal);
     vec3 viewDirection = normalize(r.direction);
@@ -368,9 +368,9 @@ vec3 rayColor(Ray ray)
 
     vec3 color = vec3(0.0);
     vec3 throughput = vec3(1.0f, 1.0f, 1.0f);
-    pointLight pl0 = createPointLight(vec3(-10.0, 15.0, 0.0), vec3(1.0, 1.0, 1.0));
-    pointLight pl1 = createPointLight(vec3(8.0, 15.0, 3.0), vec3(1.0, 1.0, 1.0));
-    pointLight pl2 = createPointLight(vec3(1.0, 15.0, -9.0), vec3(1.0, 1.0, 1.0));
+    PointLight pl0 = createPointLight(vec3(-10.0, 15.0, 0.0), vec3(1.0, 1.0, 1.0));
+    PointLight pl1 = createPointLight(vec3(8.0, 15.0, 3.0), vec3(1.0, 1.0, 1.0));
+    PointLight pl2 = createPointLight(vec3(1.0, 15.0, -9.0), vec3(1.0, 1.0, 1.0));
     for(int i = 0; i < MAX_BOUNCES; ++i)
     {   
         if(hit_world(ray, 0.001, 10000.0, rec))
@@ -438,7 +438,6 @@ void main()
         time0,
         time1);
 
-    
 
     vec4 prev = texture(iChannel0, gl_FragCoord.xy / iResolution.xy);
     vec3 prevLinear = toLinear(prev.xyz);  
