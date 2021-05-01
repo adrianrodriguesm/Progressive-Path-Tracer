@@ -449,9 +449,9 @@ void main()
 
     vec3 camPos = vec3(mouse.x * 10.0, mouse.y * 5.0, 8.0);
     vec3 camTarget = vec3(0.0, 0.0, -1.0);
-    float fovy = 60.0;
-    float aperture = 0.0;
-    float distToFocus = 2.5;
+    float fovy = 55.0;
+    float aperture = 8.0;
+    float distToFocus = 12.5;
     float time0 = 0.0;
     float time1 = 1.0;
     Camera cam = createCamera(
@@ -471,7 +471,7 @@ void main()
 
     vec2 ps = gl_FragCoord.xy + hash2(gSeed);
     //vec2 ps = gl_FragCoord.xy;
-    vec3 color = rayColor(getRay(cam, ps));
+    vec3 color = rayColor(getPrimaryRay(cam, ps));
     if(iMouseButton.x != 0.0 || iMouseButton.y != 0.0)
     {
         gl_FragColor = vec4(toGamma(color), 1.0);  //samples number reset = 1

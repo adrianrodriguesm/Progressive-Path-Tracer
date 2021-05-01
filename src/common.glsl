@@ -130,19 +130,17 @@ Camera createCamera(
     return cam;
 }
 
-Ray getRay(Camera cam, vec2 pixelSample)  //rnd pixel_sample viewport coordinates
+Ray getPrimaryRay(Camera cam, vec2 pixelSample)  //rnd pixel_sample viewport coordinates
 {
     vec2 ls = cam.lensRadius * randomInUnitDisk(gSeed);  //ls - lens sample for DOF
     float time = cam.time0 + hash1(gSeed) * (cam.time1 - cam.time0);
     
-    //float timeStamp = hash1(gSeed);
-    //float time = cam.time0 * (1.f - timeStamp) + cam.time1 * timeStamp;
-    
     //Calculate eye_offset and ray direction
     vec3 rayOrigin = cam.eye + ls.x * cam.u + ls.y * cam.v;
+    float focalRatio = (cam.lensRadius > 0.f) ? cam.focusDist/cam.planeDist : 1.f;
     vec3 pointInFocalPlane;
-	pointInFocalPlane.x = cam.width * (pixelSample.x / iResolution.x - 0.5f) * cam.focusDist;
-    pointInFocalPlane.y = cam.height * (pixelSample.y / iResolution.y - 0.5f) * cam.focusDist;
+	pointInFocalPlane.x = cam.width * (pixelSample.x / iResolution.x - 0.5f) * focalRatio;
+    pointInFocalPlane.y = cam.height * (pixelSample.y / iResolution.y - 0.5f) * focalRatio;
     pointInFocalPlane.z = -cam.planeDist;
 
     vec3 rayDirection = (pointInFocalPlane.x - ls.x) * cam.u + 
@@ -162,7 +160,7 @@ struct Material
     int type;
     vec3 albedo;                // the color used for diffuse lighting
     float shininess;
-    vec3 emissive;            // how much the surface glows
+    vec3 emissive;              // how much the surface glows
     float specularPercent;      // percentage chance of doing a specular reflection
     float diffusePercent;       // percentage chance of doing a specular reflection
     float specularRoughness;    // how rough the specular reflections are
