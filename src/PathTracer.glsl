@@ -11,8 +11,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
 {
     bool hit = false;
     rec.t = tmax;
-    rec.hitFromInside = false;
-/**/ 
+    rec.hitFromInside = false; 
     // Ground
     if(hit_triangle(createTriangle(vec3(-10.0, -0.01, 10.0), vec3(10.0, -0.01, 10.0), vec3(-10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
     {
@@ -26,7 +25,6 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         rec.material = createDiffuseMaterial(vec3(0.2));
     }
     // Emissive material
-    /**/
     {
         vec3 A = vec3(-4.0f, 5.4f,   2.5f);
         vec3 B = vec3( 4.0f, 5.4f,  2.5f);
@@ -50,7 +48,6 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
             rec.material = createDiffuseMaterial(vec3(0.2f));
         }
     }
-    /**/
     // Left sphere
     if(hit_sphere(
         createSphere(vec3(-4.0, 1.0, 0.0), 1.0),
@@ -72,9 +69,8 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         rec))
     {
         hit = true;
-        rec.material = createMetalMaterial(vec3(0.7, 0.6, 0.5), 0.f);
+        rec.material = createMetalMaterial(vec3(0.7, 0.6, 0.5), 0.2f);
     }
-/**/
     // Middle sphere
     if(hit_sphere(
         createSphere(vec3(0.0, 1.0, 0.0), 1.0),
@@ -87,7 +83,6 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         rec.material = createDialectricMaterial(vec3(1.0), 1.5f);
         rec.material.refractionColor = vec3(0,0,1);
     }
-/**/
     // Inside sphere
     if(hit_sphere(
         createSphere(vec3(0.0, 1.0, 0.0), -0.55),
@@ -100,7 +95,6 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         rec.material = createDialectricMaterial(vec3(1.0), 1.5);
         rec.material.refractionColor = vec3(1,1,0);
     }
-/**/
     int numxy = 5;
     
     for(int x = -numxy; x < numxy; ++x)
@@ -118,7 +112,6 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                 if(chooseMaterial < 0.3)
                 {
                     vec3 center1 = center + vec3(0.0, hash1(gSeed) * 0.5, 0.0);
-                    /**/
                     // Diffuse
                     if(hit_movingSphere(
                         createMovingSphere(center, center1, 0.2),
@@ -130,7 +123,6 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                         hit = true;
                         rec.material = createDiffuseMaterial(hash3(seed) * hash3(seed));
                     }
-                    /**/
                 }
                 else if(chooseMaterial < 0.5)
                 {
@@ -176,7 +168,6 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                 }
                 else
                 {
-                    /**/
                     // Glass (dialectric)
                     if(hit_sphere(
                         createSphere(center, 0.2),
@@ -189,7 +180,6 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                         rec.material.type = MT_DIALECTRIC;
                         rec.material = createDialectricMaterial(hash3(seed), 1.5);
                     }
-                    /**/
                 }
             }
         }
@@ -202,7 +192,6 @@ bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
     bool hit = false;
     rec.t = tmax;
     rec.hitFromInside = false;
-/**/ 
     // Ground
     if(hit_triangle(createTriangle(vec3(-10.0, -0.01, 10.0), vec3(10.0, -0.01, 10.0), vec3(-10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
     {
@@ -215,7 +204,6 @@ bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
         //rec.material = createDiffuseMaterial(vec3(0.2));
         return true;
     }
-/**/
     // Left sphere
     if(hit_sphere(
         createSphere(vec3(-4.0, 1.0, 0.0), 1.0),
@@ -359,6 +347,8 @@ bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
     }
     return false;
 }
+
+
 vec3 directlighting(PointLight pl, Ray r, HitRecord rec)
 {
     vec3 normal = rec.normal;
@@ -376,7 +366,7 @@ vec3 directlighting(PointLight pl, Ray r, HitRecord rec)
     Ray lightRay = createRay(emissionPoint,lightDirection);
     if(hit_world_shadow(lightRay, 0.001, tMax, lightRecord))
         return vec3(0.f);
-    
+
     // Diffuse
     vec3 diffuseColor = (pl.color *  rec.material.diffusePercent * rec.material.albedo) * lightIntensity;
     // Speculars
@@ -384,7 +374,8 @@ vec3 directlighting(PointLight pl, Ray r, HitRecord rec)
     float specAngle = max(dot(halfwayVector, normal), 0.f);
     float ksSpecular = pow(specAngle, rec.material.shininess) * rec.material.specularPercent;
     vec3 specularColor = pl.color *  ksSpecular * rec.material.specularColor;
-	return diffuseColor + specularColor;
+	return (diffuseColor + specularColor);
+    
 }
 
 #define MAX_BOUNCES 10

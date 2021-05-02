@@ -132,7 +132,8 @@ Camera createCamera(
     cam.height = 2.0 * cam.planeDist * tan(fovy * pi / 180.0 * 0.5);
     cam.width = aspect * cam.height;
 
-    cam.lensRadius = aperture * 0.5 * cam.width / iResolution.x;  //aperture ratio * pixel size; (1 pixel=lente raio 0.5)
+    // Aperture ratio * pixel size; (1 pixel=lente raio 0.5)
+    cam.lensRadius = aperture * 0.5f * cam.width / iResolution.x;  
     cam.eye = eye;
     cam.n = normalize(w);
     cam.u = normalize(cross(worldUp, cam.n));
@@ -144,9 +145,10 @@ Camera createCamera(
 
 Ray getPrimaryRay(Camera cam, vec2 pixelSample)  //rnd pixel_sample viewport coordinates
 {
-    vec2 ls = cam.lensRadius * randomInUnitDisk(gSeed);  //ls - lens sample for DOF
     float time = cam.time0 + hash1(gSeed) * (cam.time1 - cam.time0);
     
+    // ls - lens sample for DOF
+    vec2 ls = cam.lensRadius * randomInUnitDisk(gSeed);  
     //Calculate eye_offset and ray direction
     vec3 rayOrigin = cam.eye + ls.x * cam.u + ls.y * cam.v;
     float focalRatio = (cam.lensRadius > 0.f) ? cam.focusDist/cam.planeDist : 1.f;
@@ -252,14 +254,7 @@ struct HitRecord
 };
 
 // Calculate Reflection power (Shlicks Approximation)
-/** /
-float schlick(float cosine, float refractionIndex, float otherRefIndex)
-{
-    float R0 = refractionIndex * refractionIndex;
-    return R0 + (1.0f - R0) * pow(max(1.0f - cosine, 0.0), 5.0f);
-}
-/**/
-float fresnelReflectAmount(float n1, float n2, float incidentAngle)
+float fresnelSchlick(float n1, float n2, float incidentAngle)
 {
         // Schlick aproximation
         float r0 = (n1-n2) / (n1+n2);
@@ -308,7 +303,7 @@ bool scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
 
         float incidentAngle = -dot(normal, rayDir);
         // Take fresnel into account for specularChance and adjust other chances.
-        float reflectiveWeight = fresnelReflectAmount(
+        float reflectiveWeight = fresnelSchlick(
                 !rec.hitFromInside ? 1.f :  rec.material.refractionIndex,
                 !rec.hitFromInside ? rec.material.refractionIndex : 1.f,
                 incidentAngle);
