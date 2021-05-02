@@ -75,6 +75,18 @@ vec3 toGamma(vec3 c)
     return pow(c, vec3(1.0 / 2.2));
 }
 
+vec3 ACESFilm(vec3 color, float exposure)
+{
+    // Apply exposure (how long the shutter is open)
+    color = color * exposure;
+    float a = 2.51f;
+    float b = 0.03f;
+    float c = 2.43f;
+    float d = 0.59f;
+    float e = 0.14f;
+    return clamp((color*(a*color + b)) / (color*(c*color + d) + e), 0.0f, 1.0f);
+}
+
 vec2 randomInUnitDisk(inout float seed) 
 {
     vec2 h = hash2(seed) * vec2(1.0, 6.28318530718);

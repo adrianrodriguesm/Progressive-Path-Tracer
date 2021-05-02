@@ -36,7 +36,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         {
             hit = true;
             rec.material = createDiffuseMaterial(vec3(0.f));
-            rec.material.emissive = vec3(1, 0, 0) * 20.f;
+            rec.material.emissive = vec3(1, 0, 0) * 40.f;
         
         }
         // Border
@@ -98,6 +98,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
     {
         hit = true;
         rec.material = createDialectricMaterial(vec3(1.0), 1.5);
+        rec.material.refractionColor = vec3(1,1,0);
     }
 /**/
     int numxy = 5;
@@ -471,14 +472,14 @@ void main()
 
 
     vec4 prev = texture(iChannel0, gl_FragCoord.xy / iResolution.xy);
-    vec3 prevLinear = toLinear(prev.xyz);  
+    vec3 prevLinear = prev.xyz;  
 
     vec2 ps = gl_FragCoord.xy + hash2(gSeed);
     //vec2 ps = gl_FragCoord.xy;
     vec3 color = rayColor(getPrimaryRay(cam, ps));
     if(iMouseButton.x != 0.0 || iMouseButton.y != 0.0)
     {
-        gl_FragColor = vec4(toGamma(color), 1.0);  //samples number reset = 1
+        gl_FragColor = vec4(color, 1.0);  //samples number reset = 1
         return;
     }
     if(prev.w > MAX_SAMPLES)   
@@ -489,5 +490,5 @@ void main()
 
     float w = prev.w + 1.f;
     color = mix(prevLinear, color, 1.0/w); 
-    gl_FragColor = vec4(toGamma(color), w);
+    gl_FragColor = vec4(color, w);
 }
