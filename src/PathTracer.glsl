@@ -7,22 +7,22 @@
  #include "./Common.glsl"
  #iChannel0 "self"
 
-bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
+bool HitWorld(Ray r, float tmin, float tmax, out HitRecord rec)
 {
     bool hit = false;
     rec.t = tmax;
     rec.hitFromInside = false; 
     // Ground
-    if(hit_triangle(createTriangle(vec3(-10.0, -0.01, 10.0), vec3(10.0, -0.01, 10.0), vec3(-10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
+    if(HitTriangle(CreateTriangle(vec3(-10.0, -0.01, 10.0), vec3(10.0, -0.01, 10.0), vec3(-10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
     {
         hit = true;
-        rec.material = createDiffuseMaterial(vec3(0.2));
+        rec.material = CreateDiffuseMaterial(vec3(0.2));
     }
 
-    if(hit_triangle(createTriangle(vec3(-10.0, -0.01, -10.0), vec3(10.0, -0.01, 10), vec3(10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
+    if(HitTriangle(CreateTriangle(vec3(-10.0, -0.01, -10.0), vec3(10.0, -0.01, 10), vec3(10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
     {
         hit = true;
-        rec.material = createDiffuseMaterial(vec3(0.2));
+        rec.material = CreateDiffuseMaterial(vec3(0.2));
     }
     // Emissive material
     {
@@ -30,11 +30,11 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         vec3 B = vec3( 4.0f, 5.4f,  2.5f);
         vec3 C = vec3( 4.0f, 5.4f,  -2.5f);
         vec3 D = vec3(-4.0f, 5.4f,  -2.5f);
-        if(hit_quad(createQuad(A, B, C, D), r, tmin, rec.t, rec))
+        if(HitQuad(CreateQuad(A, B, C, D), r, tmin, rec.t, rec))
         {
             hit = true;
-            rec.material = createDiffuseMaterial(vec3(0.f));
-            rec.material.emissive = vec3(1, 0, 0) * 40.f;
+            rec.material = CreateDiffuseMaterial(vec3(0.f));
+            rec.material.emissive = vec3(1, 0, 0) * 20.f;
         
         }
         // Border
@@ -42,57 +42,56 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
         B = vec3( 4.5f, 5.4f,  3.0f);
         C = vec3( 4.5f, 5.4f, -3.0f);
         D = vec3(-4.5f, 5.4f, -3.0f);
-        if(hit_quad(createQuad(A, B, C, D), r, tmin, rec.t, rec))
+        if(HitQuad(CreateQuad(A, B, C, D), r, tmin, rec.t, rec))
         {
             hit = true;
-            rec.material = createDiffuseMaterial(vec3(0.2f));
+            rec.material = CreateDiffuseMaterial(vec3(0.2f));
         }
     }
     // Left sphere
-    if(hit_sphere(
-        createSphere(vec3(-4.0, 1.0, 0.0), 1.0),
+    if(HitSphere(
+        CreateSphere(vec3(-4.0, 1.0, 0.0), 1.0),
         r,
         tmin,
         rec.t,
         rec))
     {
         hit = true;
-        rec.material = createDiffuseMaterial(vec3(0.2, 0.95, 0.1));
-        //rec.material = createDiffuseMaterial(vec3(0.4, 0.2, 0.1));
+        rec.material = CreateDiffuseMaterial(vec3(0.2, 0.95, 0.1));
     }
     // Right sphere
-    if(hit_sphere(
-        createSphere(vec3(4.0, 1.0, 0.0), 1.0),
+    if(HitSphere(
+        CreateSphere(vec3(4.0, 1.0, 0.0), 1.0),
         r,
         tmin,
         rec.t,
         rec))
     {
         hit = true;
-        rec.material = createMetalMaterial(vec3(0.7, 0.6, 0.5), 0.2f);
+        rec.material = CreateMetalMaterial(vec3(0.7, 0.6, 0.5), 0.f);
     }
     // Middle sphere
-    if(hit_sphere(
-        createSphere(vec3(0.0, 1.0, 0.0), 1.0),
+    if(HitSphere(
+        CreateSphere(vec3(0.0, 1.0, 0.0), 1.0),
         r,
         tmin,
         rec.t,
         rec))
     {
         hit = true;
-        rec.material = createDialectricMaterial(vec3(1.0), 1.5f);
+        rec.material = CreateDialectricMaterial(vec3(1.0), 1.5f);
         rec.material.refractionColor = vec3(0,0,1);
     }
     // Inside sphere
-    if(hit_sphere(
-        createSphere(vec3(0.0, 1.0, 0.0), -0.55),
+    if(HitSphere(
+        CreateSphere(vec3(0.0, 1.0, 0.0), -0.55),
         r,
         tmin,
         rec.t,
         rec))
     {
         hit = true;
-        rec.material = createDialectricMaterial(vec3(1.0), 1.5);
+        rec.material = CreateDialectricMaterial(vec3(1.0), 1.5);
         rec.material.refractionColor = vec3(1,1,0);
     }
     int numxy = 5;
@@ -113,64 +112,64 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                 {
                     vec3 center1 = center + vec3(0.0, hash1(gSeed) * 0.5, 0.0);
                     // Diffuse
-                    if(hit_movingSphere(
-                        createMovingSphere(center, center1, 0.2),
+                    if(HitMovingSphere(
+                        CreateMovingSphere(center, center1, 0.2),
                         r,
                         tmin,
                         rec.t,
                         rec))
                     {
                         hit = true;
-                        rec.material = createDiffuseMaterial(hash3(seed) * hash3(seed));
+                        rec.material = CreateDiffuseMaterial(hash3(seed) * hash3(seed));
                     }
                 }
                 else if(chooseMaterial < 0.5)
                 {
                     // Diffuse
-                    if(hit_sphere(
-                        createSphere(center, 0.2),
+                    if(HitSphere(
+                        CreateSphere(center, 0.2),
                         r,
                         tmin,
                         rec.t,
                         rec))
                     {
                         hit = true;
-                        rec.material = createDiffuseMaterial(hash3(seed) * hash3(seed));
+                        rec.material = CreateDiffuseMaterial(hash3(seed) * hash3(seed));
                     }
                 }
                 else if(chooseMaterial < 0.7)
                 {
                     // Metal
-                    if(hit_sphere(
-                        createSphere(center, 0.2),
+                    if(HitSphere(
+                        CreateSphere(center, 0.2),
                         r,
                         tmin,
                         rec.t,
                         rec))
                     {
                         hit = true;
-                        rec.material = createMetalMaterial((hash3(seed) + 1.0) * 0.5, 0.0);
+                        rec.material = CreateMetalMaterial((hash3(seed) + 1.0) * 0.5, 0.0);
                     }
                 }
                 else if(chooseMaterial < 0.9)
                 {
                     // Metal
-                    if(hit_sphere(
-                        createSphere(center, 0.2),
+                    if(HitSphere(
+                        CreateSphere(center, 0.2),
                         r,
                         tmin,
                         rec.t,
                         rec))
                     {
                         hit = true;
-                        rec.material = createMetalMaterial((hash3(seed) + 1.0) * 0.5, hash1(seed));
+                        rec.material = CreateMetalMaterial((hash3(seed) + 1.0) * 0.5, hash1(seed));
                     }
                 }
                 else
                 {
                     // Glass (dialectric)
-                    if(hit_sphere(
-                        createSphere(center, 0.2),
+                    if(HitSphere(
+                        CreateSphere(center, 0.2),
                         r,
                         tmin,
                         rec.t,
@@ -178,7 +177,7 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
                     {
                         hit = true;
                         rec.material.type = MT_DIALECTRIC;
-                        rec.material = createDialectricMaterial(hash3(seed), 1.5);
+                        rec.material = CreateDialectricMaterial(hash3(seed), 1.5);
                     }
                 }
             }
@@ -187,26 +186,26 @@ bool hit_world(Ray r, float tmin, float tmax, out HitRecord rec)
     /**/
     return hit;
 }
-bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
+bool HitWorldShadow(Ray r, float tmin, float tmax, out HitRecord rec)
 {
     bool hit = false;
     rec.t = tmax;
     rec.hitFromInside = false;
     // Ground
-    if(hit_triangle(createTriangle(vec3(-10.0, -0.01, 10.0), vec3(10.0, -0.01, 10.0), vec3(-10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
+    if(HitTriangle(CreateTriangle(vec3(-10.0, -0.01, 10.0), vec3(10.0, -0.01, 10.0), vec3(-10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
     {
        // rec.material = createDiffuseMaterial(vec3(0.2));
         return true;
     }
 
-    if(hit_triangle(createTriangle(vec3(-10.0, -0.01, -10.0), vec3(10.0, -0.01, 10), vec3(10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
+    if(HitTriangle(CreateTriangle(vec3(-10.0, -0.01, -10.0), vec3(10.0, -0.01, 10), vec3(10.0, -0.01, -10.0)), r, tmin, rec.t, rec))
     {
         //rec.material = createDiffuseMaterial(vec3(0.2));
         return true;
     }
     // Left sphere
-    if(hit_sphere(
-        createSphere(vec3(-4.0, 1.0, 0.0), 1.0),
+    if(HitSphere(
+        CreateSphere(vec3(-4.0, 1.0, 0.0), 1.0),
         r,
         tmin,
         rec.t,
@@ -216,8 +215,8 @@ bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
         return true;
     }
     // Right sphere
-    if(hit_sphere(
-        createSphere(vec3(4.0, 1.0, 0.0), 1.0),
+    if(HitSphere(
+        CreateSphere(vec3(4.0, 1.0, 0.0), 1.0),
         r,
         tmin,
         rec.t,
@@ -270,8 +269,8 @@ bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
                     vec3 center1 = center + vec3(0.0, hash1(gSeed) * 0.5, 0.0);
                     /**/
                     // Diffuse
-                    if(hit_movingSphere(
-                        createMovingSphere(center, center1, 0.2),
+                    if(HitMovingSphere(
+                        CreateMovingSphere(center, center1, 0.2),
                         r,
                         tmin,
                         rec.t,
@@ -285,8 +284,8 @@ bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
                 else if(chooseMaterial < 0.5)
                 {
                     // Diffuse
-                    if(hit_sphere(
-                        createSphere(center, 0.2),
+                    if(HitSphere(
+                        CreateSphere(center, 0.2),
                         r,
                         tmin,
                         rec.t,
@@ -299,8 +298,8 @@ bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
                 else if(chooseMaterial < 0.7)
                 {
                     // Metal
-                    if(hit_sphere(
-                        createSphere(center, 0.2),
+                    if(HitSphere(
+                        CreateSphere(center, 0.2),
                         r,
                         tmin,
                         rec.t,
@@ -314,8 +313,8 @@ bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
                 else if(chooseMaterial < 0.9)
                 {
                     // Metal
-                    if(hit_sphere(
-                        createSphere(center, 0.2),
+                    if(HitSphere(
+                        CreateSphere(center, 0.2),
                         r,
                         tmin,
                         rec.t,
@@ -349,7 +348,7 @@ bool hit_world_shadow(Ray r, float tmin, float tmax, out HitRecord rec)
 }
 
 
-vec3 directlighting(PointLight pl, Ray r, HitRecord rec)
+vec3 DirectLighting(PointLight pl, Ray r, HitRecord rec)
 {
     vec3 normal = rec.normal;
     vec3 viewDirection = r.direction;
@@ -363,8 +362,8 @@ vec3 directlighting(PointLight pl, Ray r, HitRecord rec)
         return vec3(0.);
 
     HitRecord lightRecord;
-    Ray lightRay = createRay(emissionPoint,lightDirection);
-    if(hit_world_shadow(lightRay, 0.001, tMax, lightRecord))
+    Ray lightRay = CreateRay(emissionPoint,lightDirection);
+    if(HitWorldShadow(lightRay, 0.001, tMax, lightRecord))
         return vec3(0.f);
 
     // Diffuse
@@ -378,32 +377,32 @@ vec3 directlighting(PointLight pl, Ray r, HitRecord rec)
     
 }
 
-#define MAX_BOUNCES 10
+#define MAX_BOUNCES 20
 
-vec3 rayColor(Ray ray)
+vec3 RayColor(Ray ray)
 {
     HitRecord rec;
 
     vec3 color = vec3(0.0);
     vec3 throughput = vec3(1.0f, 1.0f, 1.0f);
-    PointLight pl0 = createPointLight(vec3(-10.0, 15.0, 0.0), vec3(1.0, 1.0, 1.0));
-    PointLight pl1 = createPointLight(vec3(8.0, 15.0, 3.0), vec3(1.0, 1.0, 1.0));
-    PointLight pl2 = createPointLight(vec3(1.0, 15.0, -9.0), vec3(1.0, 1.0, 1.0));
+    PointLight pl0 = CreatePointLight(vec3(-10.0, 15.0, 0.0), vec3(1.0, 1.0, 1.0));
+    PointLight pl1 = CreatePointLight(vec3(8.0, 15.0, 3.0), vec3(1.0, 1.0, 1.0));
+    PointLight pl2 = CreatePointLight(vec3(1.0, 15.0, -9.0), vec3(1.0, 1.0, 1.0));
     for(int i = 0; i < MAX_BOUNCES; ++i)
     {   
-        if(hit_world(ray, 0.001, 10000.0, rec))
+        if(HitWorld(ray, 0.001, 10000.0, rec))
         {      
             // Calculate direct lighting with 3 white point lights:
-            color += directlighting(pl0, ray, rec) * throughput;
-            color += directlighting(pl1, ray, rec) * throughput;
-            color += directlighting(pl2, ray, rec) * throughput;
+            color += DirectLighting(pl0, ray, rec) * throughput;
+            color += DirectLighting(pl1, ray, rec) * throughput;
+            color += DirectLighting(pl2, ray, rec) * throughput;
             // Add in emissive lighting
             color += rec.material.emissive * throughput;   
             
             // Calculate secondary ray and update throughput
             Ray scatterRay;
             vec3 atten;
-            if(scatter(ray, rec, atten, scatterRay))
+            if(Scatter(ray, rec, atten, scatterRay))
             {    
                 throughput *= atten;
                 // Do absorption if we are hitting from inside the object (Beer's Law)
@@ -450,7 +449,7 @@ void main()
     float distToFocus = 12.5;
     float time0 = 0.0;
     float time1 = 1.0;
-    Camera cam = createCamera(
+    Camera cam = CreateCamera(
         camPos,
         camTarget,
         vec3(0.0, 1.0, 0.0),    // world up vector
@@ -467,18 +466,19 @@ void main()
 
     vec2 ps = gl_FragCoord.xy + hash2(gSeed);
     //vec2 ps = gl_FragCoord.xy;
-    vec3 color = rayColor(getPrimaryRay(cam, ps));
+    vec3 color = RayColor(GetPrimaryRay(cam, ps));
     if(iMouseButton.x != 0.0 || iMouseButton.y != 0.0)
     {
         gl_FragColor = vec4(color, 1.0);  //samples number reset = 1
         return;
     }
+    /** /
     if(prev.w > MAX_SAMPLES)   
     {
         gl_FragColor = prev;
         return;
     }
-
+    /**/
     float w = prev.w + 1.f;
     color = mix(prevLinear, color, 1.0/w); 
     gl_FragColor = vec4(color, w);
