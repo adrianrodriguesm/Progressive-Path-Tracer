@@ -1,12 +1,15 @@
 /**
-* ver hash functions em
+* Hash function
 * https://www.shadertoy.com/view/XlGcRh hash functions GPU
 * http://www.jcgt.org/published/0009/03/02/
- */
+*/
 
- #include "./Common.glsl"
- #iChannel0 "self"
+#include "./Common.glsl"
+#iChannel0 "self"
+#iKeyboard
 
+// Expose the fov value as a slider
+#iUniform float fovy = 60.0 in { 0.0, 80.0 } 
 bool HitWorld(Ray r, float tmin, float tmax, out HitRecord rec)
 {
     bool hit = false;
@@ -34,7 +37,7 @@ bool HitWorld(Ray r, float tmin, float tmax, out HitRecord rec)
         {
             hit = true;
             rec.material = CreateDiffuseMaterial(vec3(0.f));
-            rec.material.emissive = vec3(1, 0, 0) * 20.f;
+            rec.material.emissive = vec3(1,0,0) * 20.f;
         
         }
         // Border
@@ -83,8 +86,9 @@ bool HitWorld(Ray r, float tmin, float tmax, out HitRecord rec)
         rec.material.refractionColor = vec3(0,0,1);
     }
     // Inside sphere
+    /**/
     if(HitSphere(
-        CreateSphere(vec3(0.0, 1.0, 0.0), -0.55),
+        CreateSphere(vec3(0.0, 1.0, 0.0), 0.55),
         r,
         tmin,
         rec.t,
@@ -93,7 +97,9 @@ bool HitWorld(Ray r, float tmin, float tmax, out HitRecord rec)
         hit = true;
         rec.material = CreateDialectricMaterial(vec3(1.0), 1.5);
         rec.material.refractionColor = vec3(1,1,0);
+        rec.material.refractionRoughness = 0.2f;
     }
+    /**/
     int numxy = 5;
     
     for(int x = -numxy; x < numxy; ++x)
@@ -377,7 +383,7 @@ vec3 DirectLighting(PointLight pl, Ray r, HitRecord rec)
     
 }
 
-#define MAX_BOUNCES 20
+#define MAX_BOUNCES 10
 
 vec3 RayColor(Ray ray)
 {
@@ -444,7 +450,7 @@ void main()
 
     vec3 camPos = vec3(mouse.x * 10.0, mouse.y * 5.0, 8.0);
     vec3 camTarget = vec3(0.0, 0.0, -1.0);
-    float fovy = 55.0;
+    
     float aperture = 8.0;
     float distToFocus = 12.5;
     float time0 = 0.0;

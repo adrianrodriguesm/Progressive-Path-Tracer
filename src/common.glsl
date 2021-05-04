@@ -179,7 +179,7 @@ struct Material
     float diffusePercent;       // percentage chance of doing a specular reflection
     float specularRoughness;    // how rough the specular reflections are
     vec3  specularColor;        // the color tint of specular reflections
-    vec3 refractionRoughness;   // how rough the refractive transmissions are
+    float refractionRoughness;   // how rough the refractive transmissions are
     float refractionChance;
     float specularChance;
     float refractionIndex;      // index of refraction. used by fresnel and refraction.
@@ -304,7 +304,7 @@ bool Scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
         vec3 rayDir = rayIn.direction;
         vec3 inveRayDir = rayDir * -1.f;
 
-        float incidentAngle = -dot(normal, rayDir);
+        float incidentAngle = (!rec.hitFromInside) ? -dot(normal, rayDir) : dot(normal, rayDir);
         // Take fresnel into account for specularChance and adjust other chances.
         float reflectiveWeight = FresnelSchlick(
                 !rec.hitFromInside ? 1.f :  rec.material.refractionIndex,
@@ -323,13 +323,15 @@ bool Scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
         {
             rayProbability = 1.f - reflectiveWeight;
             rScattered.origin =  rec.pos - normal * displacementBias;
-            rScattered.direction = refract(inveRayDir, normal, rec.hitFromInside ? rec.material.refractionIndex : 1.0f / rec.material.refractionIndex);
+            vec3 rayDir = refract(inveRayDir, normal, rec.hitFromInside ? rec.material.refractionIndex : 1.0f / rec.material.refractionIndex);
+            rScattered.direction = normalize(mix(normalize(rayDir), normalize(normal + RandomInUnitSphere(gSeed)), rec.material.refractionRoughness * rec.material.refractionRoughness));
         }
         rScattered.time = rayIn.time; 
         atten = rec.material.albedo * rayProbability;
         return true;
     }
-       if(rec.material.type == MT_DIALECTRIC0)
+    /** /
+    if(rec.material.type == MT_DIALECTRIC0)
     {
         vec3 rayDir = rayIn.direction;
         vec3 inveRayDir = rayDir * -1.f;
@@ -359,6 +361,7 @@ bool Scatter(Ray rayIn, HitRecord rec, out vec3 atten, out Ray rScattered)
         atten = rec.material.albedo * rayProbability;
         return true;
     }
+    /**/
     return false;
 }
 
