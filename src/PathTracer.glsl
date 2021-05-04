@@ -37,7 +37,7 @@ bool HitWorld(Ray r, float tmin, float tmax, out HitRecord rec)
         {
             hit = true;
             rec.material = CreateDiffuseMaterial(vec3(0.f));
-            rec.material.emissive = vec3(1,0,0) * 20.f;
+            rec.material.emissive = vec3(1,1,1) * 40.f;
         
         }
         // Border
@@ -399,9 +399,9 @@ vec3 RayColor(Ray ray)
         if(HitWorld(ray, 0.001, 10000.0, rec))
         {      
             // Calculate direct lighting with 3 white point lights:
-            color += DirectLighting(pl0, ray, rec) * throughput;
-            color += DirectLighting(pl1, ray, rec) * throughput;
-            color += DirectLighting(pl2, ray, rec) * throughput;
+           //color += DirectLighting(pl0, ray, rec) * throughput;
+           //color += DirectLighting(pl1, ray, rec) * throughput;
+           //color += DirectLighting(pl2, ray, rec) * throughput;
             // Add in emissive lighting
             color += rec.material.emissive * throughput;   
             
