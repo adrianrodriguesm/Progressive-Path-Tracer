@@ -5,12 +5,8 @@ void main()
 {
     vec3 color = texture(iChannel0, gl_FragCoord.xy / iResolution.xy).rgb;
 
-    // convert unbounded HDR color range to SDR color range
+    // Convert unbounded HDR color range to SDR color range
     float exposure = 0.9f;
     color = ACESFilm(color, exposure);
-
-    // convert from linear to sRGB for display
-    //color = LinearToSRGB(color);
-    
-    gl_FragColor = vec4(toGamma(color), 1.0f);
+    gl_FragColor = vec4(ToGamma(color), 1.0f);
 }
