@@ -1,8 +1,13 @@
 # Progressive-Path-Tracer
 ![Scene with emissive light](/shadertoy.png)
 
+## Run
+Open the Main.glsl and run it in vs code using the shadertoy plugin.
+
 ## Features
 * Diffuse, Metalic and Dialetic materials
+* Glossy reflection
+* Rough refraction and color absortion (Beer's Law)
 * Point lights with hard shadows
 * Emissive lights with soft shadows
 * Orbit camera movement with zoom
