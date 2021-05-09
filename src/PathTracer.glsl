@@ -9,7 +9,9 @@
 #iKeyboard
 
 // Expose the fov value as a slider
-#iUniform float fovy = 60.0 in { 0.0, 80.0 } 
+#iUniform float fovy = 60.0 in { 0.0, 80.0 }
+// Chaged to Zero to didable Depth of Field
+#define DOF 1
 bool HitWorld(Ray r, float tmin, float tmax, out HitRecord rec)
 {
     bool hit = false;
@@ -83,12 +85,12 @@ bool HitWorld(Ray r, float tmin, float tmax, out HitRecord rec)
     {
         hit = true;
         rec.material = CreateDialectricMaterial(vec3(1.0), 1.5f);
-        rec.material.refractionColor = vec3(0,0,1);
+        rec.material.refractionColor = vec3(1,0,1);
     }
     // Inside sphere
     /**/
     if(HitSphere(
-        CreateSphere(vec3(0.0, 1.0, 0.0), 0.55),
+        CreateSphere(vec3(0.0, 1.0, 0.0), -0.75),
         r,
         tmin,
         rec.t,
@@ -96,8 +98,8 @@ bool HitWorld(Ray r, float tmin, float tmax, out HitRecord rec)
     {
         hit = true;
         rec.material = CreateDialectricMaterial(vec3(1.0), 1.5);
-        rec.material.refractionColor = vec3(1,1,0);
-        rec.material.refractionRoughness = 0.2f;
+        rec.material.refractionColor = vec3(0,1,1);
+        rec.material.refractionRoughness = 0.1f;
     }
     /**/
     int numxy = 5;
@@ -451,7 +453,7 @@ void main()
     vec3 camPos = vec3(mouse.x * 10.0, mouse.y * 5.0, 8.0);
     vec3 camTarget = vec3(0.0, 0.0, -1.0);
     
-    float aperture = 8.0;
+    float aperture = DOF > 0 ? 8.f : 0.f;
     float distToFocus = 12.5;
     float time0 = 0.0;
     float time1 = 1.0;

@@ -5,7 +5,7 @@
 Open the Main.glsl and run it in vs code using the shadertoy plugin.
 
 ## Features
-* Diffuse, Metalic and Dialetic materials
+* Diffuse, Metallic and Dialetric materials
 * Glossy reflection
 * Rough refraction and color absortion (Beer's Law)
 * Point lights with hard shadows
